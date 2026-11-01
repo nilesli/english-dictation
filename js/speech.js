@@ -1,4 +1,4 @@
-/* Web Speech API · slow default · en-GB preferred · d5
+/* Web Speech API · slow default · en-GB preferred · d7
  * Replay-safe: speakToken cancels in-flight speakRepeats chains.
  * iOS/Safari: resume hack for speechSynthesis pause bug.
  */
@@ -210,6 +210,92 @@
     return speak(text, {});
   }
 
+  /**
+   * Split text into ~maxWords (default 5) English-word chunks.
+   * Punctuation stays attached to its word via whitespace split.
+   */
+  function chunkWords(text, maxWords) {
+    maxWords = Math.max(3, Math.min(6, Number(maxWords) || 5));
+    const words = String(text || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!words.length) return [];
+    const out = [];
+    for (let i = 0; i < words.length; i += maxWords) {
+      out.push(words.slice(i, i + maxWords).join(" "));
+    }
+    // Avoid a lonely 1-word tail when previous chunk has room
+    if (out.length >= 2) {
+      const lastWords = out[out.length - 1].split(/\s+/);
+      const prevWords = out[out.length - 2].split(/\s+/);
+      if (lastWords.length === 1 && prevWords.length < maxWords) {
+        out[out.length - 2] = prevWords.concat(lastWords).join(" ");
+        out.pop();
+      }
+    }
+    return out;
+  }
+
+  function delayMs(ms, token) {
+    return new Promise(function (r) {
+      setTimeout(function () {
+        r();
+      }, ms);
+    });
+  }
+
+  /**
+   * Part B paced speech: ~4–5 words per chunk; pause between words; longer between chunks.
+   * opts.wordGapSec default 0.8; opts.chunkGapSec default 1.6; opts.maxWords default 5
+   * opts.onlyChunkIndex — replay one chunk only
+   * opts.onChunk(index, chunkText) — fired when a chunk starts
+   */
+  function speakPartB(text, opts) {
+    opts = opts || {};
+    const maxWords = opts.maxWords != null ? opts.maxWords : 5;
+    const wordGap = opts.wordGapSec != null ? Number(opts.wordGapSec) : 0.8;
+    const chunkGap = opts.chunkGapSec != null ? Number(opts.chunkGapSec) : 1.6;
+    let chunks = chunkWords(text, maxWords);
+    if (!chunks.length) return Promise.resolve();
+    if (opts.onlyChunkIndex != null) {
+      const idx = Number(opts.onlyChunkIndex);
+      if (idx >= 0 && idx < chunks.length) chunks = [chunks[idx]];
+      else return Promise.resolve();
+    }
+    speakToken += 1;
+    cancelAudio();
+    const token = speakToken;
+    let chain = Promise.resolve();
+    chunks.forEach(function (chunk, ci) {
+      const words = chunk.split(/\s+/).filter(Boolean);
+      words.forEach(function (w, wi) {
+        chain = chain.then(function () {
+          if (token !== speakToken) return;
+          if (wi === 0 && typeof opts.onChunk === "function") {
+            try {
+              opts.onChunk(ci, chunk);
+            } catch (e) {}
+          }
+          return speak(w, { continueChain: true });
+        });
+        if (wi < words.length - 1 && wordGap > 0) {
+          chain = chain.then(function () {
+            if (token !== speakToken) return;
+            return delayMs(wordGap * 1000, token);
+          });
+        }
+      });
+      if (ci < chunks.length - 1 && chunkGap > 0) {
+        chain = chain.then(function () {
+          if (token !== speakToken) return;
+          return delayMs(chunkGap * 1000, token);
+        });
+      }
+    });
+    return chain;
+  }
+
   // Chrome loads voices async
   if (supported()) {
     window.speechSynthesis.getVoices();
@@ -229,6 +315,8 @@
     speak: speak,
     speakOnce: speakOnce,
     speakRepeats: speakRepeats,
+    speakPartB: speakPartB,
+    chunkWords: chunkWords,
     stop: stop,
     pickVoice: pickVoice,
   };

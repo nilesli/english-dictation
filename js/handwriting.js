@@ -1,18 +1,16 @@
-/* Handwriting pad + recognition (Tesseract fallback; navigator.ink if present) */
+/* Handwriting pad + recognition · d6
+ * OCR export: crop ink, upscale, thicken strokes, pure white bg / black ink.
+ * Grading stays strict string match in app.js — no fuzzy tolerance.
+ */
 (function (global) {
   "use strict";
 
-  /**
-   * Create a drawing pad on a canvas.
-   * @param {HTMLCanvasElement} canvas
-   * @param {object} [opts]
-   */
   function createPad(canvas, opts) {
     opts = opts || {};
     const ctx = canvas.getContext("2d");
     const state = {
       drawing: false,
-      strokes: [], // array of {points:[{x,y}], width}
+      strokes: [],
       current: null,
       penWidth: opts.penWidth || 5,
       color: opts.color || "#0f172a",
@@ -23,7 +21,8 @@
     function resize() {
       const parent = canvas.parentElement || canvas;
       const cssW = Math.max(280, parent.clientWidth || 320);
-      const cssH = opts.height || Math.round(Math.min(280, Math.max(180, cssW * 0.42)));
+      const cssH =
+        opts.height || Math.round(Math.min(280, Math.max(180, cssW * 0.42)));
       state.dpr = window.devicePixelRatio || 1;
       canvas.style.width = cssW + "px";
       canvas.style.height = cssH + "px";
@@ -53,13 +52,28 @@
         ctx.lineTo(w, y);
         ctx.stroke();
       }
-      // baseline
       ctx.strokeStyle = "#cbd5e1";
       ctx.beginPath();
       ctx.moveTo(8, h * 0.72);
       ctx.lineTo(w - 8, h * 0.72);
       ctx.stroke();
       ctx.restore();
+    }
+
+    function paintStrokes(targetCtx, strokes, penScale, color) {
+      targetCtx.lineCap = "round";
+      targetCtx.lineJoin = "round";
+      targetCtx.strokeStyle = color || "#000000";
+      strokes.forEach(function (stroke) {
+        if (!stroke.points || !stroke.points.length) return;
+        targetCtx.lineWidth = (stroke.width || state.penWidth) * (penScale || 1);
+        targetCtx.beginPath();
+        targetCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
+        for (let i = 1; i < stroke.points.length; i++) {
+          targetCtx.lineTo(stroke.points[i].x, stroke.points[i].y);
+        }
+        targetCtx.stroke();
+      });
     }
 
     function redraw() {
@@ -69,27 +83,9 @@
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, w, h);
       drawGrid();
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = state.color;
-      state.strokes.forEach(function (stroke) {
-        if (!stroke.points.length) return;
-        ctx.lineWidth = stroke.width || state.penWidth;
-        ctx.beginPath();
-        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-        for (let i = 1; i < stroke.points.length; i++) {
-          ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-        }
-        ctx.stroke();
-      });
+      paintStrokes(ctx, state.strokes, 1, state.color);
       if (state.current && state.current.points.length) {
-        ctx.lineWidth = state.current.width;
-        ctx.beginPath();
-        ctx.moveTo(state.current.points[0].x, state.current.points[0].y);
-        for (let i = 1; i < state.current.points.length; i++) {
-          ctx.lineTo(state.current.points[i].x, state.current.points[i].y);
-        }
-        ctx.stroke();
+        paintStrokes(ctx, [state.current], 1, state.color);
       }
     }
 
@@ -106,10 +102,7 @@
         clientX = ev.clientX;
         clientY = ev.clientY;
       }
-      return {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-      };
+      return { x: clientX - rect.left, y: clientY - rect.top };
     }
 
     function start(ev) {
@@ -138,7 +131,6 @@
       redraw();
     }
 
-    // Prefer Pointer Events (mouse / touch / Apple Pencil) to avoid double strokes
     if (global.PointerEvent) {
       canvas.addEventListener("pointerdown", function (ev) {
         canvas.setPointerCapture(ev.pointerId);
@@ -184,10 +176,96 @@
       return state.strokes.length === 0;
     }
 
-    /** Export as PNG blob (white bg) for OCR */
+    function inkBounds() {
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      const all = state.strokes.slice();
+      if (state.current) all.push(state.current);
+      all.forEach(function (stroke) {
+        const half = (stroke.width || state.penWidth) / 2 + 1;
+        (stroke.points || []).forEach(function (p) {
+          minX = Math.min(minX, p.x - half);
+          minY = Math.min(minY, p.y - half);
+          maxX = Math.max(maxX, p.x + half);
+          maxY = Math.max(maxY, p.y + half);
+        });
+      });
+      if (!isFinite(minX)) {
+        return {
+          x: 0,
+          y: 0,
+          w: canvas.clientWidth,
+          h: canvas.clientHeight,
+        };
+      }
+      const pad = 18;
+      minX = Math.max(0, minX - pad);
+      minY = Math.max(0, minY - pad);
+      maxX = Math.min(canvas.clientWidth, maxX + pad);
+      maxY = Math.min(canvas.clientHeight, maxY + pad);
+      return { x: minX, y: minY, w: Math.max(8, maxX - minX), h: Math.max(8, maxY - minY) };
+    }
+
+    /**
+     * Build a clean OCR bitmap: cropped ink, ×3 scale, thickened black strokes, white bg.
+     * Returns HTMLCanvasElement (caller turns into blob).
+     */
+    function buildOcrCanvas() {
+      const b = inkBounds();
+      const scale = 3;
+      // Target line height ~96–128px helps Tesseract Latin
+      const minOutH = 120;
+      const hScale = Math.max(scale, minOutH / Math.max(b.h, 1));
+      const s = Math.min(4, Math.max(scale, hScale));
+      const outW = Math.max(32, Math.round(b.w * s));
+      const outH = Math.max(32, Math.round(b.h * s));
+      const off = document.createElement("canvas");
+      off.width = outW;
+      off.height = outH;
+      const octx = off.getContext("2d");
+      octx.fillStyle = "#ffffff";
+      octx.fillRect(0, 0, outW, outH);
+      octx.save();
+      octx.scale(s, s);
+      octx.translate(-b.x, -b.y);
+      // Thicken slightly relative to screen pen for thin kid strokes
+      const thick = 1.35;
+      octx.lineCap = "round";
+      octx.lineJoin = "round";
+      octx.strokeStyle = "#000000";
+      state.strokes.forEach(function (stroke) {
+        if (!stroke.points || !stroke.points.length) return;
+        octx.lineWidth = Math.max(2.5, (stroke.width || state.penWidth) * thick);
+        octx.beginPath();
+        octx.moveTo(stroke.points[0].x, stroke.points[0].y);
+        for (let i = 1; i < stroke.points.length; i++) {
+          octx.lineTo(stroke.points[i].x, stroke.points[i].y);
+        }
+        octx.stroke();
+      });
+      octx.restore();
+      // Optional second pass: slight threshold via getImageData for grey antialias → black
+      try {
+        const img = octx.getImageData(0, 0, outW, outH);
+        const d = img.data;
+        for (let i = 0; i < d.length; i += 4) {
+          // luminance; darken ink, keep bg white
+          const y = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+          const v = y < 200 ? 0 : 255;
+          d[i] = d[i + 1] = d[i + 2] = v;
+          d[i + 3] = 255;
+        }
+        octx.putImageData(img, 0, 0);
+      } catch (e) {
+        /* cross-origin unlikely on local canvas */
+      }
+      return off;
+    }
+
     function toBlob() {
       return new Promise(function (resolve) {
-        // temporarily redraw without grid for cleaner OCR
         const show = state.showGrid;
         state.showGrid = false;
         redraw();
@@ -199,6 +277,31 @@
           },
           "image/png"
         );
+      });
+    }
+
+    /** Preferred export for handwriting OCR */
+    function toOcrBlob() {
+      return new Promise(function (resolve, reject) {
+        try {
+          const off = buildOcrCanvas();
+          if (off.toBlob) {
+            off.toBlob(function (blob) {
+              if (blob) resolve(blob);
+              else reject(new Error("無法匯出 OCR 圖"));
+            }, "image/png");
+          } else {
+            // rare fallback
+            const url = off.toDataURL("image/png");
+            fetch(url)
+              .then(function (r) {
+                return r.blob();
+              })
+              .then(resolve, reject);
+          }
+        } catch (e) {
+          reject(e);
+        }
       });
     }
 
@@ -223,45 +326,11 @@
       setPenWidth: setPenWidth,
       isEmpty: isEmpty,
       toBlob: toBlob,
+      toOcrBlob: toOcrBlob,
+      buildOcrCanvas: buildOcrCanvas,
       toDataURL: toDataURL,
       redraw: redraw,
     };
-  }
-
-  /**
-   * Recognize handwritten English from canvas pad.
-   * Priority: navigator.ink (if usable) → Tesseract OCR on PNG.
-   * @param {ReturnType<createPad>} pad
-   * @param {function(string):void} [onProgress]
-   * @returns {Promise<{text:string, method:string, confidence?:number}>}
-   */
-  async function recognize(pad, onProgress) {
-    if (pad.isEmpty()) {
-      return { text: "", method: "empty" };
-    }
-
-    // Experimental: navigator.ink (rarely available; keep hook)
-    if (global.navigator && navigator.ink && typeof navigator.ink.requestPresenter === "function") {
-      // No standard handwriting-to-text API widely shipped; skip to OCR.
-    }
-
-    if (onProgress) onProgress("辨識手寫中…");
-    if (!global.DictationOCR || !DictationOCR.recognize) {
-      throw new Error("OCR 模組未載入");
-    }
-    const blob = await pad.toBlob();
-    if (!blob) throw new Error("無法匯出畫板");
-
-    // Prefer single-line style: Tesseract often works better with PSM 7/8 via worker params —
-    // DictationOCR.recognize uses default; we pass image as-is.
-    let raw;
-    if (typeof DictationOCR.recognizeHandwriting === "function") {
-      raw = await DictationOCR.recognizeHandwriting(blob, onProgress);
-    } else {
-      raw = await DictationOCR.recognize(blob, onProgress);
-    }
-    const text = cleanHandText(raw);
-    return { text: text, method: "tesseract", raw: raw };
   }
 
   function cleanHandText(raw) {
@@ -271,9 +340,32 @@
       .replace(/[|]/g, "I")
       .replace(/\s+/g, " ")
       .trim();
-    // drop leftover OCR junk symbols
-    t = t.replace(/[^A-Za-z0-9'’\-.,!?;: ]/g, "");
+    // Strict alphabet + space + apostrophe/hyphen only (matches OCR whitelist)
+    t = t.replace(/[^A-Za-z' \-]/g, "");
     return t.replace(/\s+/g, " ").trim();
+  }
+
+  async function recognize(pad, onProgress) {
+    if (pad.isEmpty()) {
+      return { text: "", method: "empty" };
+    }
+    if (onProgress) onProgress("準備手寫圖（加粗／放大）…");
+    if (!global.DictationOCR || !DictationOCR.recognize) {
+      throw new Error("OCR 模組未載入");
+    }
+    const blob =
+      typeof pad.toOcrBlob === "function" ? await pad.toOcrBlob() : await pad.toBlob();
+    if (!blob) throw new Error("無法匯出畫板");
+
+    if (onProgress) onProgress("辨識手寫中…");
+    let raw;
+    if (typeof DictationOCR.recognizeHandwriting === "function") {
+      raw = await DictationOCR.recognizeHandwriting(blob, onProgress);
+    } else {
+      raw = await DictationOCR.recognize(blob, onProgress);
+    }
+    const text = cleanHandText(raw);
+    return { text: text, method: "tesseract", raw: raw };
   }
 
   global.DictationHandwriting = {

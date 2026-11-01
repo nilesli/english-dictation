@@ -1,4 +1,4 @@
-/* 英文默書温習 · iPad-first · d5 · ?v=20261101d5 */
+/* 英文默書温習 · iPad-first · d7 · ?v=20261101d7 */
 :root {
   --primary: #3B82F6;
   --primary-dark: #2563EB;
@@ -626,4 +626,35 @@ table.hist th {
 .empty-note {
   color: var(--muted);
   margin: 0.5rem 0;
+}
+
+
+/* ----- Study Part B chunk picker (d7) ----- */
+.study-chunk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: min(42vh, 360px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.15rem;
+}
+.study-chunk-item {
+  text-align: left;
+  background: #fff;
+  border: 2px solid var(--border);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1.05rem;
+  min-height: 52px;
+  border-radius: 12px;
+  padding: 0.65rem 0.9rem;
+}
+.study-chunk-item.active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+.study-chunk-item:active {
+  transform: scale(0.99);
 }

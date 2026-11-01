@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>英文默書温習</title>
-  <link rel="stylesheet" href="css/styles.css?v=20261101d5" />
+  <link rel="stylesheet" href="css/styles.css?v=20261101d7" />
 </head>
 <body>
   <header class="app-header">
@@ -70,7 +70,7 @@
       <div id="teacher-body"><p class="empty-note">尚未載入。</p></div>
     </details>
 
-      <p class="footer-note">英文默書温習 · d5 · ?v=20261101d5 · 本機＋雲端成績</p>
+      <p class="footer-note">英文默書温習 · d7 · ?v=20261101d7 · 本機＋雲端成績</p>
     </section>
 
     <!-- MANAGE -->
@@ -121,7 +121,7 @@
     <section class="view" id="view-study" aria-label="温習">
       <div class="hero">
         <h2>温習</h2>
-        <p>睇字、聽慢速朗讀；撳「再聽一次」可重播而家呢張（唔限次數）。</p>
+        <p>睇字、聽慢速朗讀。Part B 可自由揀句／截（約 4–5 字）；撳「再聽一次」重播而家呢截。</p>
       </div>
 
       <div class="card">
@@ -138,13 +138,24 @@
         </div>
       </div>
 
+      <div class="card" id="study-pick-wrap" hidden>
+        <label class="meta-line">Part B · 揀要聽嘅一截（約 4–5 字）</label>
+        <p class="hint" style="color:var(--muted);margin:0.25rem 0 0.5rem">撳下面任一截即可；字與字之間會停耐少少。</p>
+        <div class="study-chunk-list" id="study-chunk-list" role="listbox" aria-label="Part B 朗讀截"></div>
+        <div class="btn-row" style="margin-top:0.75rem">
+          <button type="button" class="btn-secondary" id="btn-study-chunk-prev">← 上一截</button>
+          <button type="button" class="btn-primary" id="btn-study-chunk-next">下一截 →</button>
+        </div>
+      </div>
+
       <div class="card study-card" id="study-panel">
         <p class="meta-line" id="study-meta">—</p>
         <div id="study-body"></div>
-        <div class="btn-row">
+        <div class="btn-row replay-row">
           <button type="button" class="btn-replay" id="btn-study-speak" aria-label="再聽一次">🔊 再聽一次</button>
         </div>
-        <div class="btn-row">
+        <p class="replay-hint" id="study-replay-hint">温習 Part B：每次約 4–5 字；可喺上面清單自由揀截</p>
+        <div class="btn-row" id="study-nav-row">
           <button type="button" class="btn-secondary" id="btn-study-prev">上一張</button>
           <button type="button" class="btn-primary" id="btn-study-next">下一張</button>
         </div>
@@ -268,13 +279,13 @@
 
   <div class="toast" id="toast" hidden role="status"></div>
 
-  <script src="js/data-u4.js?v=20261101d5"></script>
-  <script src="js/storage.js?v=20261101d5"></script>
-  <script src="js/firebase-config.js?v=20261101d5"></script>
-  <script src="js/speech.js?v=20261101d5"></script>
-  <script src="js/ocr.js?v=20261101d5"></script>
-  <script src="js/handwriting.js?v=20261101d5"></script>
-  <script src="js/app.js?v=20261101d5"></script>
-  <script src="js/cloud.js?v=20261101d5"></script>
+  <script src="js/data-u4.js?v=20261101d7"></script>
+  <script src="js/storage.js?v=20261101d7"></script>
+  <script src="js/firebase-config.js?v=20261101d7"></script>
+  <script src="js/speech.js?v=20261101d7"></script>
+  <script src="js/ocr.js?v=20261101d7"></script>
+  <script src="js/handwriting.js?v=20261101d7"></script>
+  <script src="js/app.js?v=20261101d7"></script>
+  <script src="js/cloud.js?v=20261101d7"></script>
 </body>
 </html>

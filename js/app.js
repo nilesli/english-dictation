@@ -1,4 +1,4 @@
-/* 英文默書温習 · app shell · d4 */
+/* 英文默書温習 · app shell · d7 */
 (function () {
   "use strict";
 
@@ -58,6 +58,10 @@
   let hwPad = null;
   let hwRecognizing = false;
   let studySpeakChain = 0;
+  let studyPartBChunks = [];
+  let studyPartBChunk = 0;
+  let studyPartBText = "";
+  let quizPartBChunk = 0;
 
   function toast(msg) {
     const el = $("#toast");
@@ -232,12 +236,25 @@
       studyCards = DictationData.buildStudyCards(currentUnit, ["A"]);
     }
     studyIdx = 0;
+    studyPartBText = "";
+    studyPartBChunks = [];
+    studyPartBChunk = 0;
     renderStudy();
   }
 
   function renderStudy() {
     const meta = $("#study-meta");
     const body = $("#study-body");
+    renderStudyChunkList();
+    var srh = $("#study-replay-hint");
+    if (srh) {
+      srh.textContent =
+        studyPart === "B"
+          ? "Part B：上面清單自由揀截；「再聽一次」重播而家呢截（字間停長啲）"
+          : "撳「再聽一次」聽而家呢張";
+    }
+    var nav = $("#study-nav-row");
+    if (nav) nav.hidden = studyPart === "B";
     if (!studyCards.length) {
       meta.textContent = "呢個 Part 暫時冇內容";
       body.innerHTML = "<p>請去「管理範圍」載入 4A U4 或貼上詞語。</p>";
@@ -307,6 +324,52 @@
     }
   }
 
+  function partBGaps() {
+    var gap = Number(settings.gapSec) || 1.5;
+    return {
+      wordGapSec: Math.max(0.65, Math.min(1.0, gap * 0.55)),
+      chunkGapSec: Math.max(1.4, gap),
+      maxWords: 5,
+    };
+  }
+
+  function isStudyPartBMode() {
+    return studyPart === "B" || (studyPart === "ALL" && studyCards[studyIdx] && studyCards[studyIdx].part === "B");
+  }
+
+  function renderStudyChunkList() {
+    var wrap = $("#study-pick-wrap");
+    var list = $("#study-chunk-list");
+    if (!wrap || !list) return;
+    var show = studyPart === "B";
+    wrap.hidden = !show;
+    if (!show) {
+      list.innerHTML = "";
+      return;
+    }
+    list.innerHTML = "";
+    studyCards.forEach(function (card, idx) {
+      if (card.part !== "B") return;
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "study-chunk-item" + (idx === studyIdx ? " active" : "");
+      btn.setAttribute("role", "option");
+      btn.setAttribute("aria-selected", idx === studyIdx ? "true" : "false");
+      btn.textContent =
+        (card.zh ? card.zh.replace(/^.*?· /, "") + " · " : "") + (card.en || card.speak || "");
+      // Prefer shorter label: sentence/chunk meta + text
+      btn.textContent = (idx + 1) + ". " + (card.en || card.speak || "");
+      btn.title = card.zh || "";
+      btn.addEventListener("click", function () {
+        studyIdx = idx;
+        renderStudy();
+        speakStudy(false);
+      });
+      list.appendChild(btn);
+    });
+  }
+
+  /** @param {boolean} [replayOnly] unused — always speak current card chunk with Part B pacing when B */
   function speakStudy() {
     const card = studyCards[studyIdx];
     if (!card) {
@@ -319,34 +382,28 @@
     }
     studySpeakChain += 1;
     var chainId = studySpeakChain;
-    // Passage card: speak one chunk at a time (never whole passage as one utterance)
-    if (card.kind === "passage" && card.sentences && card.sentences.length) {
-      DictationSpeech.stop();
-      var gap = settings.gapSec || 1.5;
-      var texts = card.sentences.map(function (s) {
-        return s.text;
-      });
-      var i = 0;
-      function nextChunk() {
+    var say = card.speak || card.en || card.plain || "";
+
+    if (
+      (card.part === "B" || card.kind === "word-chunk") &&
+      DictationSpeech.speakPartB
+    ) {
+      var gaps = partBGaps();
+      DictationSpeech.speakPartB(say, {
+        maxWords: gaps.maxWords,
+        wordGapSec: gaps.wordGapSec,
+        chunkGapSec: gaps.chunkGapSec,
+        onChunk: function (i) {
+          if (chainId !== studySpeakChain) return;
+          studyPartBChunk = i;
+        },
+      }).catch(function (e) {
         if (chainId !== studySpeakChain) return;
-        if (i >= texts.length) return;
-        var text = texts[i++];
-        // continueChain so we don't kill the rest of this study chain mid-way
-        DictationSpeech.speak(text, { continueChain: true })
-          .then(function () {
-            if (chainId !== studySpeakChain) return;
-            if (i >= texts.length) return;
-            setTimeout(nextChunk, gap * 1000);
-          })
-          .catch(function (e) {
-            if (chainId !== studySpeakChain) return;
-            toast("朗讀失敗：" + (e && e.message ? e.message : "請再試"));
-          });
-      }
-      setTimeout(nextChunk, 80);
+        toast("朗讀失敗：" + (e && e.message ? e.message : "請再試"));
+      });
       return;
     }
-    var say = card.speak || card.en || card.plain;
+
     var play = DictationSpeech.speakOnce
       ? DictationSpeech.speakOnce(say)
       : DictationSpeech.speak(say);
@@ -447,6 +504,7 @@
     const item = quizItems[quizIdx];
     quizChecked = false;
     hwRecognizing = false;
+    quizPartBChunk = 0;
     $("#quiz-feedback").hidden = true;
     $("#quiz-after").hidden = true;
     $("#btn-quiz-check").disabled = false;
@@ -467,7 +525,7 @@
     $("#quiz-progress").style.width = pct + "%";
     $("#quiz-prompt").textContent =
       item.part === "B"
-        ? "🔊 聽呢一段，然後用手寫（唔會一次讀晒成篇）"
+        ? "🔊 每次約 4–5 個字；字與字之間會停耐少少，然後用手寫"
         : "🔊 聽朗讀，然後用手寫";
     var label = "🔊 再聽一次";
     ["#btn-quiz-replay", "#btn-quiz-replay-bottom"].forEach(function (sel) {
@@ -482,14 +540,14 @@
     if (hint) {
       hint.textContent =
         item.part === "B"
-          ? "聽唔清就撳「再聽一次」重播呢一段（唔限次數）"
+          ? "聽唔清就撳「再聽一次」重播而家呢截（約 4–5 字 · 唔限次數）"
           : "聽唔清就撳「再聽一次」（唔限次數）";
     }
     resetHwPad();
     if (autoSpeak) speakQuizItem(false);
   }
 
-  /** @param {boolean} [onceOnly] true = 再聽一次（單次）；false/省略 = 開始題目時跟設定讀幾次 */
+  /** @param {boolean} [onceOnly] true = 再聽一次；false = 開題自動讀 */
   function speakQuizItem(onceOnly) {
     const item = quizItems[quizIdx];
     if (!item) return;
@@ -498,6 +556,47 @@
       return;
     }
     const text = item.promptSpeak;
+    if (item.part === "B" && DictationSpeech.speakPartB) {
+      var gaps = partBGaps();
+      var baseOpts = {
+        maxWords: gaps.maxWords,
+        wordGapSec: gaps.wordGapSec,
+        chunkGapSec: gaps.chunkGapSec,
+        onChunk: function (i) {
+          quizPartBChunk = i;
+        },
+      };
+      if (onceOnly) {
+        DictationSpeech.speakPartB(
+          text,
+          Object.assign({}, baseOpts, {
+            onlyChunkIndex: quizPartBChunk || 0,
+          })
+        ).catch(function (e) {
+          toast("朗讀失敗：" + (e && e.message ? e.message : "請再試"));
+        });
+        return;
+      }
+      quizPartBChunk = 0;
+      var times = Math.max(1, Math.min(3, Number(settings.repeats) || 1));
+      var chain = DictationSpeech.speakPartB(text, baseOpts);
+      var r;
+      for (r = 1; r < times; r++) {
+        chain = chain
+          .then(function () {
+            return new Promise(function (res) {
+              setTimeout(res, gaps.chunkGapSec * 1000);
+            });
+          })
+          .then(function () {
+            return DictationSpeech.speakPartB(text, baseOpts);
+          });
+      }
+      chain.catch(function (e) {
+        toast("朗讀失敗：" + (e && e.message ? e.message : "請再試"));
+      });
+      return;
+    }
     if (onceOnly) {
       var play = DictationSpeech.speakOnce
         ? DictationSpeech.speakOnce(text)
@@ -507,9 +606,9 @@
       });
       return;
     }
-    const times = settings.repeats || 2;
-    const gap = settings.gapSec || 1.5;
-    DictationSpeech.speakRepeats(text, times, gap).catch(function (e) {
+    var timesA = settings.repeats || 2;
+    var gapA = settings.gapSec || 1.5;
+    DictationSpeech.speakRepeats(text, timesA, gapA).catch(function (e) {
       toast("朗讀失敗：" + (e && e.message ? e.message : "請再試"));
     });
   }
@@ -538,27 +637,27 @@
       .then(function (res) {
         hwRecognizing = false;
         const user = (res && res.text) || "";
+        const fb = $("#quiz-feedback");
+        // Always surface OCR text first (strict compare next)
+        if (st) st.textContent = user ? "辨識：「" + user + "」" : "認唔到字跡";
         if (!user) {
           quizChecked = false;
           $("#btn-quiz-check").disabled = false;
           $("#btn-quiz-check").textContent = "核對手寫";
-          const fb = $("#quiz-feedback");
           fb.hidden = false;
           fb.className = "feedback bad";
-          fb.textContent = "認唔到，請寫清楚啲（可撳清除再寫）";
-          if (st) st.textContent = "認唔到字跡";
+          fb.textContent = "認唔到，請寫清楚啲（可撳清除／再寫一次）";
           $("#quiz-after").hidden = false;
-          // allow rewrite without counting yet
           return;
         }
         quizChecked = true;
+        // Strict string match only (d6: no fuzzy / OCR-tolerance)
         const ok = answersMatch(item, user);
-        const fb = $("#quiz-feedback");
         fb.hidden = false;
         if (ok) {
           quizCorrect += 1;
           fb.className = "feedback ok";
-          fb.textContent = "✅ 正確！（辨識：「" + user + "」）";
+          fb.textContent = "✅ 正確！辨識：「" + user + "」";
           $("#quiz-after").hidden = false;
           $("#btn-quiz-check").textContent = "已核對";
         } else {
@@ -570,11 +669,10 @@
           });
           fb.className = "feedback bad";
           fb.textContent =
-            "❌ 唔啱。辨識：「" + user + "」· 正確：" + item.answer;
+            "❌ 唔啱。辨識：「" + user + "」· 正確：「" + item.answer + "」";
           $("#quiz-after").hidden = false;
           $("#btn-quiz-check").textContent = "已核對";
         }
-        if (st) st.textContent = "辨識：「" + user + "」";
       })
       .catch(function (e) {
         hwRecognizing = false;
@@ -1112,6 +1210,16 @@
         renderStudy();
       });
       on("#btn-study-speak", "click", speakStudy);
+      on("#btn-study-chunk-prev", "click", function () {
+        if (!studyCards.length) return;
+        studyIdx = (studyIdx - 1 + studyCards.length) % studyCards.length;
+        renderStudy();
+      });
+      on("#btn-study-chunk-next", "click", function () {
+        if (!studyCards.length) return;
+        studyIdx = (studyIdx + 1) % studyCards.length;
+        renderStudy();
+      });
       on("#btn-study-prev", "click", function () {
         if (!studyCards.length) return;
         studyIdx = (studyIdx - 1 + studyCards.length) % studyCards.length;

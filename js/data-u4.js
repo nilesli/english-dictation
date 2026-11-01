@@ -90,7 +90,7 @@
     title: "4A U4 – Eating out",
     school: "慈幼葉漢千禧小學 Salesian Yip Hon Millennium Primary School",
     level: "P.4",
-    version: "20261101d2",
+    version: "20261101d7",
     parts: {
       A: {
         id: "A",
@@ -168,6 +168,30 @@
     },
   };
 
+
+  /** ~4–5 words per chunk for Part B listening */
+  function chunkWords(text, maxWords) {
+    maxWords = Math.max(3, Math.min(6, Number(maxWords) || 5));
+    const words = String(text || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!words.length) return [];
+    const out = [];
+    for (let i = 0; i < words.length; i += maxWords) {
+      out.push(words.slice(i, i + maxWords).join(" "));
+    }
+    if (out.length >= 2) {
+      const lastWords = out[out.length - 1].split(/\s+/);
+      const prevWords = out[out.length - 2].split(/\s+/);
+      if (lastWords.length === 1 && prevWords.length < maxWords) {
+        out[out.length - 2] = prevWords.concat(lastWords).join(" ");
+        out.pop();
+      }
+    }
+    return out;
+  }
+
   /** Flatten unit into dictation quiz items */
   function buildQuizItems(unit, opts) {
     opts = opts || {};
@@ -193,37 +217,60 @@
     if (parts.includes("B")) {
       unit.parts.B.passages.forEach(function (pass) {
         if (bMode === "focus") {
+          var fflat = [];
           pass.focusPhrases.forEach(function (fp, i) {
-            out.push({
-              id: pass.id + "-f" + i,
-              part: "B",
-              type: "phrase",
-              promptSpeak: fp,
-              answer: fp,
-              zh: "",
-              label: fp,
-              hint: pass.label + " · 重點",
-              chunkIndex: i + 1,
-              chunkTotal: pass.focusPhrases.length,
-              passageId: pass.id,
+            var parts = chunkWords(fp, 5);
+            if (!parts.length) parts = [fp];
+            parts.forEach(function (ch, ci) {
+              fflat.push({
+                id: pass.id + "-f" + i + "-w" + ci,
+                part: "B",
+                type: "phrase",
+                promptSpeak: ch,
+                answer: ch,
+                zh: "",
+                label: ch,
+                hint: pass.label + " · 重點",
+                passageId: pass.id,
+                wordChunkIndex: ci,
+                wordChunkTotal: parts.length,
+              });
             });
           });
+          fflat.forEach(function (it, idx) {
+            it.chunkIndex = idx + 1;
+            it.chunkTotal = fflat.length;
+            out.push(it);
+          });
         } else {
+          // Split each sentence into ~4–5-word listen/write chunks
+          var flat = [];
           pass.sentences.forEach(function (s, si) {
-            out.push({
-              id: s.id,
-              part: "B",
-              type: "sentence",
-              promptSpeak: s.text,
-              answer: s.text,
-              zh: "",
-              label: s.text,
-              hint: pass.label,
-              focus: s.focus,
-              chunkIndex: si + 1,
-              chunkTotal: pass.sentences.length,
-              passageId: pass.id,
+            var parts = chunkWords(s.text, 5);
+            if (!parts.length) parts = [s.text];
+            parts.forEach(function (ch, ci) {
+              flat.push({
+                id: s.id + "-w" + ci,
+                part: "B",
+                type: "word-chunk",
+                promptSpeak: ch,
+                answer: ch,
+                zh: "",
+                label: ch,
+                hint: pass.label + (parts.length > 1 ? " · 句" + (si + 1) : ""),
+                focus: ci === 0 ? s.focus : null,
+                sentenceId: s.id,
+                sentenceIndex: si + 1,
+                passageId: pass.id,
+                wordChunkIndex: ci,
+                wordChunkTotal: parts.length,
+              });
             });
+          });
+          flat.forEach(function (it, idx) {
+            it.chunkIndex = idx + 1;
+            it.chunkTotal = flat.length;
+            out.push(it);
           });
         }
       });
@@ -303,25 +350,32 @@
 
     if (parts.includes("B")) {
       unit.parts.B.passages.forEach(function (pass) {
-        cards.push({
-          id: pass.id,
-          part: "B",
-          kind: "passage",
-          label: pass.label,
-          html: pass.html,
-          plain: pass.plain,
-          speak: pass.plain,
-          sentences: pass.sentences,
-        });
-        pass.sentences.forEach(function (s) {
-          cards.push({
-            id: s.id + "-study",
-            part: "B",
-            kind: "sentence",
-            en: s.text,
-            zh: s.focus ? "重點：" + s.focus : "",
-            speak: s.text,
-            focus: s.focus,
+        pass.sentences.forEach(function (s, si) {
+          var wparts = chunkWords(s.text, 5);
+          if (!wparts.length) wparts = [s.text];
+          wparts.forEach(function (ch, ci) {
+            cards.push({
+              id: s.id + "-study-w" + ci,
+              part: "B",
+              kind: "word-chunk",
+              en: ch,
+              zh:
+                (pass.label || "Part B") +
+                " · 句 " +
+                (si + 1) +
+                " · 第 " +
+                (ci + 1) +
+                "／" +
+                wparts.length +
+                " 截",
+              speak: ch,
+              label: pass.label,
+              sentenceId: s.id,
+              sentenceIndex: si + 1,
+              wordChunkIndex: ci,
+              wordChunkTotal: wparts.length,
+              focus: ci === 0 ? s.focus : null,
+            });
           });
         });
       });
@@ -394,5 +448,6 @@
     buildStudyCards: buildStudyCards,
     htmlWithUnderline: htmlWithUnderline,
     unitToPasteLines: unitToPasteLines,
+    chunkWords: chunkWords,
   };
 })(typeof window !== "undefined" ? window : globalThis);
