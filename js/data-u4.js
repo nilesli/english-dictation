@@ -6,6 +6,7 @@
     id: "b-para",
     kind: "passage",
     label: "段落",
+    beimo: false,
     // full text with underline markers as {u}...{/u}
     html:
       "Ella and Sam {u}ordered{/u} macaroni with mushrooms and beef curry for dinner. " +
@@ -48,7 +49,8 @@
   const PART_B_DIALOGUE = {
     id: "b-dlg",
     kind: "dialogue",
-    label: "對話",
+    label: "對話／背默",
+    beimo: true, // 第二段背默：由 What would you like? 起；開題唔自動朗讀
     html:
       "{u}What would you like?{/u} {u}I’d like{/u} soup noodles. " +
       "Which {u}would you like{/u}, dumplings or pork chop? {u}I’d like{/u} dumplings, please.",
@@ -90,7 +92,7 @@
     title: "4A U4 – Eating out",
     school: "慈幼葉漢千禧小學 Salesian Yip Hon Millennium Primary School",
     level: "P.4",
-    version: "20261101d7",
+    version: "20261101d9",
     parts: {
       A: {
         id: "A",
@@ -171,7 +173,7 @@
 
   /** ~4–5 words per chunk for Part B listening */
   function chunkWords(text, maxWords) {
-    maxWords = Math.max(3, Math.min(6, Number(maxWords) || 5));
+    maxWords = Math.max(3, Math.min(4, Number(maxWords) || 4));
     const words = String(text || "")
       .trim()
       .split(/\s+/)
@@ -219,7 +221,7 @@
         if (bMode === "focus") {
           var fflat = [];
           pass.focusPhrases.forEach(function (fp, i) {
-            var parts = chunkWords(fp, 5);
+            var parts = chunkWords(fp, 4);
             if (!parts.length) parts = [fp];
             parts.forEach(function (ch, ci) {
               fflat.push({
@@ -230,10 +232,11 @@
                 answer: ch,
                 zh: "",
                 label: ch,
-                hint: pass.label + " · 重點",
+                hint: pass.label + (pass.beimo ? " · 背默" : " · 重點"),
                 passageId: pass.id,
                 wordChunkIndex: ci,
                 wordChunkTotal: parts.length,
+                beimo: !!pass.beimo,
               });
             });
           });
@@ -246,7 +249,7 @@
           // Split each sentence into ~4–5-word listen/write chunks
           var flat = [];
           pass.sentences.forEach(function (s, si) {
-            var parts = chunkWords(s.text, 5);
+            var parts = chunkWords(s.text, 4);
             if (!parts.length) parts = [s.text];
             parts.forEach(function (ch, ci) {
               flat.push({
@@ -257,13 +260,17 @@
                 answer: ch,
                 zh: "",
                 label: ch,
-                hint: pass.label + (parts.length > 1 ? " · 句" + (si + 1) : ""),
+                hint:
+                  pass.label +
+                  (pass.beimo ? " · 背默" : "") +
+                  (parts.length > 1 ? " · 句" + (si + 1) : ""),
                 focus: ci === 0 ? s.focus : null,
                 sentenceId: s.id,
                 sentenceIndex: si + 1,
                 passageId: pass.id,
                 wordChunkIndex: ci,
                 wordChunkTotal: parts.length,
+                beimo: !!pass.beimo,
               });
             });
           });
@@ -351,7 +358,7 @@
     if (parts.includes("B")) {
       unit.parts.B.passages.forEach(function (pass) {
         pass.sentences.forEach(function (s, si) {
-          var wparts = chunkWords(s.text, 5);
+          var wparts = chunkWords(s.text, 4);
           if (!wparts.length) wparts = [s.text];
           wparts.forEach(function (ch, ci) {
             cards.push({
@@ -361,6 +368,7 @@
               en: ch,
               zh:
                 (pass.label || "Part B") +
+                (pass.beimo ? " · 背默" : "") +
                 " · 句 " +
                 (si + 1) +
                 " · 第 " +
@@ -375,6 +383,8 @@
               wordChunkIndex: ci,
               wordChunkTotal: wparts.length,
               focus: ci === 0 ? s.focus : null,
+              beimo: !!pass.beimo,
+              passageId: pass.id,
             });
           });
         });

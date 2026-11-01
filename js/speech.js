@@ -1,4 +1,4 @@
-/* Web Speech API · slow default · en-GB preferred · d7
+/* Web Speech API · slow default · en-GB preferred · d9
  * Replay-safe: speakToken cancels in-flight speakRepeats chains.
  * iOS/Safari: resume hack for speechSynthesis pause bug.
  */
@@ -211,11 +211,11 @@
   }
 
   /**
-   * Split text into ~maxWords (default 5) English-word chunks.
+   * Split text into ~maxWords (default 4) English-word chunks.
    * Punctuation stays attached to its word via whitespace split.
    */
   function chunkWords(text, maxWords) {
-    maxWords = Math.max(3, Math.min(6, Number(maxWords) || 5));
+    maxWords = Math.max(3, Math.min(4, Number(maxWords) || 4));
     const words = String(text || "")
       .trim()
       .split(/\s+/)
@@ -247,15 +247,15 @@
 
   /**
    * Part B paced speech: ~4–5 words per chunk; pause between words; longer between chunks.
-   * opts.wordGapSec default 0.8; opts.chunkGapSec default 1.6; opts.maxWords default 5
+   * opts.wordGapSec default 0.4; opts.chunkGapSec default 0.9; opts.maxWords default 4
    * opts.onlyChunkIndex — replay one chunk only
    * opts.onChunk(index, chunkText) — fired when a chunk starts
    */
   function speakPartB(text, opts) {
     opts = opts || {};
-    const maxWords = opts.maxWords != null ? opts.maxWords : 5;
-    const wordGap = opts.wordGapSec != null ? Number(opts.wordGapSec) : 0.8;
-    const chunkGap = opts.chunkGapSec != null ? Number(opts.chunkGapSec) : 1.6;
+    const maxWords = opts.maxWords != null ? opts.maxWords : 4;
+    const wordGap = opts.wordGapSec != null ? Number(opts.wordGapSec) : 0.4;
+    const chunkGap = opts.chunkGapSec != null ? Number(opts.chunkGapSec) : 0.9;
     let chunks = chunkWords(text, maxWords);
     if (!chunks.length) return Promise.resolve();
     if (opts.onlyChunkIndex != null) {

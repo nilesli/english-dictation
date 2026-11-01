@@ -1,4 +1,4 @@
-/* 英文默書温習 · app shell · d8 */
+/* 英文默書温習 · app shell · d9 */
 (function () {
   "use strict";
 
@@ -252,7 +252,7 @@
     if (srh) {
       srh.textContent =
         studyPart === "B"
-          ? "Part B：上面清單自由揀截；「再聽一次」重播而家呢截（字間停長啲）"
+          ? "Part B：上面清單自由揀截（約 3–4 字）；背默截唔自動播，撳「再聽一次」"
           : "撳「再聽一次」聽而家呢張";
     }
     var nav = $("#study-nav-row");
@@ -327,12 +327,25 @@
   }
 
   function partBGaps() {
-    var gap = Number(settings.gapSec) || 1.5;
+    // d9: shorter word gaps; chunks still a bit longer than words
     return {
-      wordGapSec: Math.max(0.65, Math.min(1.0, gap * 0.55)),
-      chunkGapSec: Math.max(1.4, gap),
-      maxWords: 5,
+      wordGapSec: 0.4,
+      chunkGapSec: 0.85,
+      maxWords: 4,
     };
+  }
+
+  function isBeimoItem(item) {
+    if (!item) return false;
+    if (item.beimo) return true;
+    // Fallback detect: dialogue passage / What would you like
+    var id = String(item.passageId || item.id || "");
+    if (id.indexOf("b-dlg") === 0 || id.indexOf("b-d") === 0) return true;
+    var tip = String(item.hint || item.zh || item.label || "");
+    if (tip.indexOf("背默") >= 0) return true;
+    var speak = String(item.promptSpeak || item.speak || item.en || "").toLowerCase();
+    if (speak.indexOf("what would you like") === 0) return true;
+    return false;
   }
 
   function isStudyPartBMode() {
@@ -365,7 +378,8 @@
       btn.addEventListener("click", function () {
         studyIdx = idx;
         renderStudy();
-        speakStudy(false);
+        // 背默：揀截後唔自動播，等「再聽一次」
+        if (!isBeimoItem(card)) speakStudy();
       });
       list.appendChild(btn);
     });
@@ -530,28 +544,29 @@
     $("#quiz-meta").textContent = meta;
     const pct = Math.round((quizIdx / quizItems.length) * 100);
     $("#quiz-progress").style.width = pct + "%";
-    $("#quiz-prompt").textContent =
-      item.part === "B"
-        ? "🔊 每次約 4–5 個字；字與字之間會停耐少少，然後用手寫"
+    var beimo = isBeimoItem(item);
+    $("#quiz-prompt").textContent = beimo
+      ? "📝 呢截係背默——唔會自動朗讀；寫完先。需要可撳「再聽一次」"
+      : item.part === "B"
+        ? "🔊 每次約 3–4 個字；聽完用手寫"
         : "🔊 聽朗讀，然後用手寫";
-    var label = "🔊 再聽一次";
-    ["#btn-quiz-replay", "#btn-quiz-replay-bottom"].forEach(function (sel) {
-      var replay = $(sel);
-      if (replay) {
-        replay.hidden = false;
-        replay.disabled = false;
-        replay.textContent = label;
-      }
-    });
+    var replay = $("#btn-quiz-replay");
+    if (replay) {
+      replay.hidden = false;
+      replay.disabled = false;
+      replay.textContent = "🔊 再聽一次";
+    }
     var hint = $("#quiz-replay-hint");
     if (hint) {
-      hint.textContent =
-        item.part === "B"
-          ? "聽唔清就撳「再聽一次」重播而家呢截（約 4–5 字 · 唔限次數）"
+      hint.textContent = beimo
+        ? "背默段：開題唔播音；自願先撳「再聽一次」（約 3–4 字）"
+        : item.part === "B"
+          ? "聽唔清就撳「再聽一次」重播而家呢截（約 3–4 字）"
           : "聽唔清就撳「再聽一次」（唔限次數）";
     }
     resetHwPad();
-    if (autoSpeak) speakQuizItem(false);
+    // 背默：開題唔自動朗讀
+    if (autoSpeak && !beimo) speakQuizItem(false);
   }
 
   /** @param {boolean} [onceOnly] true = 再聽一次；false = 開題自動讀 */
@@ -1333,7 +1348,6 @@
       }
       on("#btn-quiz-start", "click", startQuiz);
       on("#btn-quiz-replay", "click", replayQuizOnce);
-      on("#btn-quiz-replay-bottom", "click", replayQuizOnce);
       on("#btn-quiz-check", "click", checkQuiz);
       on("#btn-quiz-confirm", "click", confirmQuizGrade);
       on("#btn-quiz-skip", "click", skipQuiz);
