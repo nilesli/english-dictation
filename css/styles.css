@@ -1,4 +1,4 @@
-/* 英文默書温習 · iPad-first · d11 · ?v=20261101d11 */
+/* 英文默書温習 · iPad-first · d12 · ?v=20261101d12 */
 :root {
   --primary: #3B82F6;
   --primary-dark: #2563EB;
@@ -710,7 +710,7 @@ table.hist th {
 }
 
 
-/* ----- iPad landscape: full-width write, listen below (d11) ----- */
+/* ----- iPad landscape: full-width write, listen below (d12) ----- */
 @media (orientation: landscape) and (min-width: 900px) {
   :root {
     --maxw: 100%;
@@ -832,12 +832,13 @@ table.hist th {
     display: block;
   }
   @supports (display: grid) {
-    #view-study {
+    /* Only grid when study is the active view — avoids overriding .view { display:none } */
+    #view-study.active {
       display: grid;
       grid-template-columns: 1fr;
       gap: 0.65rem;
     }
-    #view-study:has(#study-pick-wrap:not([hidden])) {
+    #view-study.active:has(#study-pick-wrap:not([hidden])) {
       grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.2fr);
       grid-template-areas:
         "hero hero"
@@ -845,19 +846,19 @@ table.hist th {
         "pick panel";
       align-items: start;
     }
-    #view-study:has(#study-pick-wrap:not([hidden])) > .hero {
+    #view-study.active:has(#study-pick-wrap:not([hidden])) > .hero {
       grid-area: hero;
     }
-    #view-study:has(#study-pick-wrap:not([hidden])) > .card:not(#study-pick-wrap):not(#study-panel) {
+    #view-study.active:has(#study-pick-wrap:not([hidden])) > .card:not(#study-pick-wrap):not(#study-panel) {
       grid-area: parts;
     }
-    #view-study:has(#study-pick-wrap:not([hidden])) > #study-pick-wrap {
+    #view-study.active:has(#study-pick-wrap:not([hidden])) > #study-pick-wrap {
       grid-area: pick;
       max-height: calc(100dvh - 8rem);
       overflow: auto;
       margin-bottom: 0;
     }
-    #view-study:has(#study-pick-wrap:not([hidden])) > #study-panel {
+    #view-study.active:has(#study-pick-wrap:not([hidden])) > #study-panel {
       grid-area: panel;
       margin-bottom: 0;
     }

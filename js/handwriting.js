@@ -1,4 +1,4 @@
-/* Handwriting pad + recognition · d11
+/* Handwriting pad + recognition · d12
  * OCR export: crop ink, upscale, thicken strokes, pure white bg / black ink.
  * Grading stays strict string match in app.js — no fuzzy tolerance.
  */
