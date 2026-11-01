@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>英文默書温習</title>
-  <link rel="stylesheet" href="css/styles.css?v=20261101d13" />
+  <link rel="stylesheet" href="css/styles.css?v=20261101d14" />
 </head>
 <body>
   <header class="app-header">
@@ -70,7 +70,7 @@
       <div id="teacher-body"><p class="empty-note">尚未載入。</p></div>
     </details>
 
-      <p class="footer-note">英文默書温習 · d13 · ?v=20261101d13 · 本機＋雲端成績</p>
+      <p class="footer-note">英文默書温習 · d14 · ?v=20261101d14 · 本機＋雲端成績</p>
     </section>
 
     <!-- MANAGE -->
@@ -104,7 +104,7 @@
 
       <div class="card">
         <h3 style="margin-top:0">相片 OCR</h3>
-        <p class="hint" style="color:var(--muted);margin-top:0">需要上網載入 Tesseract（CDN）。辨識後請檢查再儲存。</p>
+        <p class="hint" style="color:var(--muted);margin-top:0">需要上網：Gemini 認字（Firebase）＋ Tesseract（CDN）。辨識後請檢查再儲存。</p>
         <div class="field">
           <label for="ocr-file">上傳相片</label>
           <input type="file" id="ocr-file" accept="image/*" capture="environment" />
@@ -294,13 +294,14 @@
 
   <div class="toast" id="toast" hidden role="status"></div>
 
-  <script src="js/data-u4.js?v=20261101d13"></script>
-  <script src="js/storage.js?v=20261101d13"></script>
-  <script src="js/firebase-config.js?v=20261101d13"></script>
-  <script src="js/speech.js?v=20261101d13"></script>
-  <script src="js/ocr.js?v=20261101d13"></script>
-  <script src="js/handwriting.js?v=20261101d13"></script>
-  <script src="js/app.js?v=20261101d13"></script>
-  <script src="js/cloud.js?v=20261101d13"></script>
+  <script src="js/data-u4.js?v=20261101d14"></script>
+  <script src="js/storage.js?v=20261101d14"></script>
+  <script src="js/firebase-config.js?v=20261101d14"></script>
+  <script src="js/speech.js?v=20261101d14"></script>
+  <script src="js/ocr.js?v=20261101d14"></script>
+  <script src="js/gemini-ocr.js?v=20261101d14"></script>
+  <script src="js/handwriting.js?v=20261101d14"></script>
+  <script src="js/app.js?v=20261101d14"></script>
+  <script src="js/cloud.js?v=20261101d14"></script>
 </body>
 </html>

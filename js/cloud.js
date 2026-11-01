@@ -2,8 +2,9 @@
  * 英文默書温習 — Firebase cloud（默書場次＋錯字）
  * Classic script (not type=module) so file:// / preview never blocks app boot.
  * Firebase ESM loaded lazily via dynamic import() from CDN.
+ * Shared CDN with gemini-ocr.js (need ≥11.8 for firebase-ai.js).
  * Path: artifacts/english-dictation-default/public/data/english_dictation/sessions/entries/{id}
- * d13 · ?v=20261101d13
+ * d14 · ?v=20261101d14
  */
 (function (global) {
   "use strict";
@@ -11,9 +12,9 @@
   const APP_ID = "english-dictation-default";
   const LS_PENDING = "eng-dictation-pending-sessions";
   const FIREBASE_APP_NAME = "english-dictation";
-  const FB_APP = "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-  const FB_AUTH = "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-  const FB_FS = "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  const FB_APP = "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+  const FB_AUTH = "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+  const FB_FS = "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
   let app = null;
   let auth = null;

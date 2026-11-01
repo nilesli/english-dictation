@@ -1,4 +1,4 @@
-/* Handwriting pad + recognition · d13
+/* Handwriting pad + recognition · d14
  * OCR export: crop ink, upscale, thicken strokes, pure white bg / black ink.
  * Eraser: whole-stroke hit-test delete (not white-paint). Undo restores removed stroke.
  * Grading stays strict string match in app.js — no fuzzy tolerance.
@@ -659,15 +659,38 @@
   }
 
   /**
-   * Prefer browser Ink API when present; also run Tesseract and pick higher latin score.
+   * Run Gemini (preferred for a/o etc.) in parallel with Ink + Tesseract.
+   * Prefer non-empty Gemini latin text; else pick best latin score (Gemini boosted).
    * Never biases toward expected answer (strict grading stays in app.js).
    */
+  async function recognizeWithGemini(pad, onProgress) {
+    if (
+      !global.DictationGeminiOCR ||
+      typeof global.DictationGeminiOCR.recognizePad !== "function"
+    ) {
+      return null;
+    }
+    if (
+      typeof global.DictationGeminiOCR.isConfigured === "function" &&
+      !global.DictationGeminiOCR.isConfigured()
+    ) {
+      return null;
+    }
+    return global.DictationGeminiOCR.recognizePad(pad, onProgress);
+  }
+
   async function recognize(pad, onProgress) {
     if (pad.isEmpty()) {
       return { text: "", method: "empty", confidence: 0 };
     }
 
     const jobs = [];
+    jobs.push(
+      recognizeWithGemini(pad, onProgress).catch(function (e) {
+        console.warn("[DictationHandwriting] gemini failed", e);
+        return null;
+      })
+    );
     if (browserInkSupported()) {
       jobs.push(
         recognizeWithBrowserInk(pad, onProgress).catch(function () {
@@ -684,11 +707,21 @@
 
     if (onProgress) onProgress("辨識手寫中…");
     const results = await Promise.all(jobs);
+    // Prefer Gemini when it returns non-empty cleaned latin text
+    const geminiHit = results.find(function (r) {
+      return r && r.method === "gemini" && r.text;
+    });
+    if (geminiHit) {
+      geminiHit.score = scoreLatinText(geminiHit.text, geminiHit.confidence) + 12;
+      return geminiHit;
+    }
     let best = null;
     let bestScore = -1;
     results.forEach(function (r) {
       if (!r || !r.text) return;
-      const sc = scoreLatinText(r.text, r.confidence);
+      var sc = scoreLatinText(r.text, r.confidence);
+      // Mild boost if method tagged gemini (defensive; normally returned above)
+      if (r.method === "gemini") sc += 12;
       if (sc > bestScore) {
         bestScore = sc;
         best = r;
