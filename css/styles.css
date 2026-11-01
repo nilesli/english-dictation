@@ -1,4 +1,4 @@
-/* 英文默書温習 · iPad-first · d9 · ?v=20261101d9 */
+/* 英文默書温習 · iPad-first · d10 · ?v=20261101d10 */
 :root {
   --primary: #3B82F6;
   --primary-dark: #2563EB;
@@ -19,7 +19,7 @@
   --shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
   --radius: 16px;
   --tap-min: 52px;
-  --maxw: 840px;
+  --maxw: min(1120px, 100%);
   --font: system-ui, -apple-system, "PingFang TC", "Noto Sans TC",
     "Microsoft JhengHei", "Helvetica Neue", sans-serif;
 }
@@ -70,7 +70,7 @@ input, textarea, select {
   width: 100%;
   max-width: var(--maxw);
   margin: 0 auto;
-  padding: 1.25rem 1.25rem 3rem;
+  padding: 1rem 1rem 2.5rem;
 }
 
 .app-header {
@@ -680,4 +680,183 @@ table.hist th {
 }
 #quiz-preview-method {
   text-align: center;
+}
+
+
+/* ----- Pen / eraser toggle (d10) ----- */
+.hw-tool-toggle {
+  margin: 0.5rem 0 0.25rem;
+  gap: 0.5rem;
+}
+.btn-hw-tool {
+  flex: 1 1 40%;
+  min-height: 56px;
+  font-weight: 800;
+  font-size: 1.1rem;
+  background: #f1f5f9;
+  color: var(--text);
+  border: 3px solid var(--border);
+}
+.btn-hw-tool.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary-dark);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+#btn-hw-eraser.active {
+  background: #ea580c;
+  border-color: #c2410c;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.35);
+}
+
+
+/* ----- iPad landscape: use full width (d10) ----- */
+@media (orientation: landscape) and (min-width: 900px) {
+  :root {
+    --maxw: 100%;
+  }
+
+  .app-header {
+    padding: 0.75rem 1rem;
+  }
+  .app-header h1 {
+    font-size: 1.35rem;
+  }
+  .app-header .sub {
+    font-size: 0.85rem;
+  }
+
+  .wrap {
+    max-width: 100%;
+    width: 100%;
+    padding: 0.65rem 0.85rem 1.25rem;
+    box-sizing: border-box;
+  }
+
+  .hero {
+    margin: 0.35rem 0 0.65rem;
+  }
+  .hero h2 {
+    font-size: 1.25rem;
+    margin: 0 0 0.25rem;
+  }
+  .hero p {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .card,
+  .study-card,
+  #quiz-run.card,
+  #quiz-setup.card {
+    padding: 0.75rem 0.85rem;
+    margin-bottom: 0.65rem;
+  }
+
+  /* Quiz run: listen controls | write pad side-by-side */
+  #quiz-run {
+    display: grid;
+    grid-template-columns: minmax(240px, 0.95fr) minmax(320px, 1.35fr);
+    grid-template-areas:
+      "meta meta"
+      "listen write"
+      "actions actions"
+      "preview preview"
+      "after after";
+    gap: 0.65rem 1rem;
+    align-items: start;
+  }
+  #quiz-run > #quiz-meta {
+    grid-area: meta;
+  }
+  #quiz-run > .progress-bar {
+    grid-area: meta;
+    align-self: end;
+    margin-top: 0.35rem;
+  }
+  #quiz-run > .quiz-listen-pane {
+    grid-area: listen;
+  }
+  #quiz-run > .hw-wrap {
+    grid-area: write;
+    margin: 0;
+  }
+  #quiz-run > .quiz-listen-pane ~ .btn-row:not(.hw-tools):not(.hw-tool-toggle):not(.replay-row) {
+    grid-area: actions;
+  }
+  #quiz-run > #quiz-preview {
+    grid-area: preview;
+  }
+  #quiz-run > #quiz-feedback {
+    grid-area: preview;
+  }
+  #quiz-run > #quiz-after {
+    grid-area: after;
+  }
+
+  #quiz-run .hw-canvas-box {
+    min-height: 220px;
+  }
+  #hw-canvas {
+    min-height: 200px;
+  }
+
+  /* Study: picker + panel side-by-side when Part B picker visible */
+  #study-pick-wrap:not([hidden]) {
+    display: block;
+  }
+  @supports (display: grid) {
+    #view-study {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.65rem;
+    }
+    #view-study:has(#study-pick-wrap:not([hidden])) {
+      grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.2fr);
+      grid-template-areas:
+        "hero hero"
+        "parts parts"
+        "pick panel";
+      align-items: start;
+    }
+    #view-study:has(#study-pick-wrap:not([hidden])) > .hero {
+      grid-area: hero;
+    }
+    #view-study:has(#study-pick-wrap:not([hidden])) > .card:not(#study-pick-wrap):not(#study-panel) {
+      grid-area: parts;
+    }
+    #view-study:has(#study-pick-wrap:not([hidden])) > #study-pick-wrap {
+      grid-area: pick;
+      max-height: calc(100dvh - 8rem);
+      overflow: auto;
+      margin-bottom: 0;
+    }
+    #view-study:has(#study-pick-wrap:not([hidden])) > #study-panel {
+      grid-area: panel;
+      margin-bottom: 0;
+    }
+  }
+
+  .study-chunk-list {
+    max-height: calc(100dvh - 14rem);
+  }
+
+  .footer-note {
+    margin-top: 0.75rem;
+    font-size: 0.8rem;
+  }
+}
+
+/* Very wide iPads / landscape tablets */
+@media (orientation: landscape) and (min-width: 1100px) {
+  .wrap {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  #quiz-run {
+    grid-template-columns: minmax(280px, 0.85fr) minmax(420px, 1.45fr);
+  }
+  #hw-canvas {
+    min-height: 240px;
+  }
 }

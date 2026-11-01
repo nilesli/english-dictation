@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>英文默書温習</title>
-  <link rel="stylesheet" href="css/styles.css?v=20261101d9" />
+  <link rel="stylesheet" href="css/styles.css?v=20261101d10" />
 </head>
 <body>
   <header class="app-header">
@@ -70,7 +70,7 @@
       <div id="teacher-body"><p class="empty-note">尚未載入。</p></div>
     </details>
 
-      <p class="footer-note">英文默書温習 · d9 · ?v=20261101d9 · 本機＋雲端成績</p>
+      <p class="footer-note">英文默書温習 · d10 · ?v=20261101d10 · 本機＋雲端成績</p>
     </section>
 
     <!-- MANAGE -->
@@ -226,11 +226,13 @@
       <div class="card" id="quiz-run" hidden>
         <p class="meta-line" id="quiz-meta">—</p>
         <div class="progress-bar" aria-hidden="true"><span id="quiz-progress"></span></div>
+        <div class="quiz-listen-pane">
         <div class="quiz-hidden" id="quiz-prompt">🔊 聽朗讀，然後用手寫</div>
         <div class="btn-row replay-row">
           <button type="button" class="btn-replay" id="btn-quiz-replay" aria-label="再聽一次">🔊 再聽一次</button>
         </div>
         <p class="replay-hint" id="quiz-replay-hint">聽唔清就撳「再聽一次」（唔限次數）</p>
+        </div>
         <div class="hw-wrap">
           <div class="hw-toolbar">
             <span class="meta-line">用手寫（手指／觸控筆）· 唔使鍵盤</span>
@@ -239,11 +241,15 @@
           <div class="hw-canvas-box">
             <canvas id="hw-canvas" width="640" height="240" aria-label="默書手寫畫板"></canvas>
           </div>
+          <div class="btn-row hw-tool-toggle" role="group" aria-label="筆或擦膠">
+            <button type="button" class="btn-hw-tool active" id="btn-hw-pen" aria-pressed="true">✏️ 筆</button>
+            <button type="button" class="btn-hw-tool" id="btn-hw-eraser" aria-pressed="false">🧽 擦膠</button>
+          </div>
           <div class="btn-row hw-tools">
             <button type="button" class="btn-secondary" id="btn-hw-undo">↩ 撤銷</button>
             <button type="button" class="btn-danger" id="btn-hw-clear">清除</button>
-            <label class="hw-pen-label">筆粗
-              <input type="range" id="hw-pen" min="3" max="12" step="1" value="5" />
+            <label class="hw-pen-label" id="hw-size-label">筆粗／擦膠大小
+              <input type="range" id="hw-pen" min="3" max="16" step="1" value="5" />
             </label>
           </div>
           <p class="ocr-status" id="hw-status" aria-live="polite"></p>
@@ -287,13 +293,13 @@
 
   <div class="toast" id="toast" hidden role="status"></div>
 
-  <script src="js/data-u4.js?v=20261101d9"></script>
-  <script src="js/storage.js?v=20261101d9"></script>
-  <script src="js/firebase-config.js?v=20261101d9"></script>
-  <script src="js/speech.js?v=20261101d9"></script>
-  <script src="js/ocr.js?v=20261101d9"></script>
-  <script src="js/handwriting.js?v=20261101d9"></script>
-  <script src="js/app.js?v=20261101d9"></script>
-  <script src="js/cloud.js?v=20261101d9"></script>
+  <script src="js/data-u4.js?v=20261101d10"></script>
+  <script src="js/storage.js?v=20261101d10"></script>
+  <script src="js/firebase-config.js?v=20261101d10"></script>
+  <script src="js/speech.js?v=20261101d10"></script>
+  <script src="js/ocr.js?v=20261101d10"></script>
+  <script src="js/handwriting.js?v=20261101d10"></script>
+  <script src="js/app.js?v=20261101d10"></script>
+  <script src="js/cloud.js?v=20261101d10"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-/* 英文默書温習 · app shell · d9 */
+/* 英文默書温習 · app shell · d10 */
 (function () {
   "use strict";
 
@@ -494,6 +494,23 @@
     });
   }
 
+
+  function setHwTool(tool) {
+    ensureHwPad();
+    if (hwPad && hwPad.setTool) hwPad.setTool(tool);
+    var penBtn = $("#btn-hw-pen");
+    var erBtn = $("#btn-hw-eraser");
+    var penOn = tool !== "erase";
+    if (penBtn) {
+      penBtn.classList.toggle("active", penOn);
+      penBtn.setAttribute("aria-pressed", penOn ? "true" : "false");
+    }
+    if (erBtn) {
+      erBtn.classList.toggle("active", !penOn);
+      erBtn.setAttribute("aria-pressed", !penOn ? "true" : "false");
+    }
+  }
+
   function ensureHwPad() {
     const canvas = $("#hw-canvas");
     if (!canvas) return null;
@@ -565,6 +582,7 @@
           : "聽唔清就撳「再聽一次」（唔限次數）";
     }
     resetHwPad();
+    setHwTool("pen");
     // 背默：開題唔自動朗讀
     if (autoSpeak && !beimo) speakQuizItem(false);
   }
@@ -788,6 +806,7 @@
     $("#btn-quiz-check").textContent = "辨識手寫";
     $("#btn-quiz-check").hidden = false;
     resetHwPad();
+    setHwTool("pen");
   }
 
   function nextQuiz() {
@@ -1371,6 +1390,12 @@
       on("#btn-hw-undo", "click", function () {
         if (hwPad) hwPad.undo();
       });
+      on("#btn-hw-pen", "click", function () {
+        setHwTool("pen");
+      });
+      on("#btn-hw-eraser", "click", function () {
+        setHwTool("erase");
+      });
       on("#hw-grid", "change", function () {
         ensureHwPad();
         if (hwPad) hwPad.setGrid(this.checked);
@@ -1379,6 +1404,7 @@
         ensureHwPad();
         if (hwPad) hwPad.setPenWidth(this.value);
       });
+      setHwTool("pen");
 
       // manage
       on("#btn-load-u4", "click", loadU4Sample);

@@ -1,4 +1,4 @@
-/* Handwriting pad + recognition · d8
+/* Handwriting pad + recognition · d10
  * OCR export: crop ink, upscale, thicken strokes, pure white bg / black ink.
  * Grading stays strict string match in app.js — no fuzzy tolerance.
  */
@@ -13,6 +13,8 @@
       strokes: [],
       current: null,
       penWidth: opts.penWidth || 5,
+      eraserWidth: opts.eraserWidth || 14,
+      tool: "pen", // "pen" | "erase"
       color: opts.color || "#0f172a",
       showGrid: opts.showGrid !== false,
       dpr: 1,
@@ -21,8 +23,18 @@
     function resize() {
       const parent = canvas.parentElement || canvas;
       const cssW = Math.max(280, parent.clientWidth || 320);
-      const cssH =
-        opts.height || Math.round(Math.min(280, Math.max(180, cssW * 0.42)));
+      var landscape =
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(orientation: landscape) and (min-width: 900px)").matches;
+      var baseH = opts.height;
+      if (!baseH) {
+        if (landscape) {
+          baseH = Math.round(Math.min(320, Math.max(220, cssW * 0.28)));
+        } else {
+          baseH = Math.round(Math.min(280, Math.max(180, cssW * 0.42)));
+        }
+      }
+      const cssH = baseH;
       state.dpr = window.devicePixelRatio || 1;
       canvas.style.width = cssW + "px";
       canvas.style.height = cssH + "px";
@@ -60,13 +72,22 @@
       ctx.restore();
     }
 
-    function paintStrokes(targetCtx, strokes, penScale, color) {
+    function strokeWidth(stroke) {
+      if (stroke.mode === "erase") {
+        return stroke.width || state.eraserWidth || 14;
+      }
+      return stroke.width || state.penWidth || 5;
+    }
+
+    function paintStrokes(targetCtx, strokes, penScale, inkColor) {
       targetCtx.lineCap = "round";
       targetCtx.lineJoin = "round";
-      targetCtx.strokeStyle = color || "#000000";
       strokes.forEach(function (stroke) {
         if (!stroke.points || !stroke.points.length) return;
-        targetCtx.lineWidth = (stroke.width || state.penWidth) * (penScale || 1);
+        var erase = stroke.mode === "erase";
+        targetCtx.globalCompositeOperation = "source-over";
+        targetCtx.strokeStyle = erase ? "#ffffff" : inkColor || state.color || "#000000";
+        targetCtx.lineWidth = strokeWidth(stroke) * (penScale || 1);
         targetCtx.beginPath();
         targetCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
         for (let i = 1; i < stroke.points.length; i++) {
@@ -74,6 +95,7 @@
         }
         targetCtx.stroke();
       });
+      targetCtx.globalCompositeOperation = "source-over";
     }
 
     function redraw() {
@@ -82,11 +104,13 @@
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, w, h);
-      drawGrid();
+      // Ink first (pen + white eraser), grid on top so erase won't wipe guides
       paintStrokes(ctx, state.strokes, 1, state.color);
       if (state.current && state.current.points.length) {
         paintStrokes(ctx, [state.current], 1, state.color);
       }
+      drawGrid();
+      canvas.style.cursor = state.tool === "erase" ? "cell" : "crosshair";
     }
 
     function pos(ev) {
@@ -110,7 +134,12 @@
       state.drawing = true;
       const p = pos(ev);
       p.t = Date.now();
-      state.current = { points: [p], width: state.penWidth };
+      var mode = state.tool === "erase" ? "erase" : "pen";
+      var w =
+        mode === "erase"
+          ? Math.max(8, state.eraserWidth || state.penWidth * 2.5)
+          : state.penWidth;
+      state.current = { points: [p], width: w, mode: mode };
       redraw();
     }
 
@@ -173,6 +202,27 @@
 
     function setPenWidth(w) {
       state.penWidth = Math.max(2, Math.min(16, Number(w) || 5));
+      // Same slider scales eraser (larger for mid-letter fixes)
+      state.eraserWidth = Math.max(8, Math.min(36, state.penWidth * 2.6));
+    }
+
+    function setEraserWidth(w) {
+      state.eraserWidth = Math.max(8, Math.min(36, Number(w) || 14));
+    }
+
+    function setTool(tool) {
+      state.tool = tool === "erase" ? "erase" : "pen";
+      canvas.style.cursor = state.tool === "erase" ? "cell" : "crosshair";
+    }
+
+    function getTool() {
+      return state.tool;
+    }
+
+    function hasEraseStrokes() {
+      return state.strokes.some(function (s) {
+        return s && s.mode === "erase";
+      });
     }
 
     function isEmpty() {
@@ -238,9 +288,16 @@
       octx.lineCap = "round";
       octx.lineJoin = "round";
       octx.strokeStyle = "#000000";
+      octx.lineCap = "round";
+      octx.lineJoin = "round";
       state.strokes.forEach(function (stroke) {
         if (!stroke.points || !stroke.points.length) return;
-        octx.lineWidth = Math.max(2.5, (stroke.width || state.penWidth) * thick);
+        var erase = stroke.mode === "erase";
+        octx.strokeStyle = erase ? "#ffffff" : "#000000";
+        var baseW = erase
+          ? stroke.width || state.eraserWidth || 14
+          : stroke.width || state.penWidth;
+        octx.lineWidth = Math.max(erase ? 4 : 2.5, baseW * thick);
         octx.beginPath();
         octx.moveTo(stroke.points[0].x, stroke.points[0].y);
         for (let i = 1; i < stroke.points.length; i++) {
@@ -320,10 +377,15 @@
 
     resize();
     window.addEventListener("resize", resize);
+    window.addEventListener("orientationchange", function () {
+      setTimeout(resize, 200);
+    });
 
     function getInkStrokes() {
-      // HandwritingRecognition API stroke format: { points: [{x,y,t}] }
-      return state.strokes.map(function (stroke) {
+      // HandwritingRecognition API: pen strokes only (if erased, caller should prefer OCR)
+      return state.strokes.filter(function (stroke) {
+        return stroke && stroke.mode !== "erase";
+      }).map(function (stroke) {
         var t0 = (stroke.points[0] && stroke.points[0].t) || Date.now();
         return {
           points: (stroke.points || []).map(function (p, i) {
@@ -343,6 +405,10 @@
       undo: undo,
       setGrid: setGrid,
       setPenWidth: setPenWidth,
+      setEraserWidth: setEraserWidth,
+      setTool: setTool,
+      getTool: getTool,
+      hasEraseStrokes: hasEraseStrokes,
       isEmpty: isEmpty,
       toBlob: toBlob,
       toOcrBlob: toOcrBlob,
@@ -407,6 +473,10 @@
   async function recognizeWithBrowserInk(pad, onProgress) {
     const recognizer = await getBrowserRecognizer();
     if (!recognizer || typeof pad.getInkStrokes !== "function") return null;
+    if (pad.hasEraseStrokes && pad.hasEraseStrokes()) {
+      // Eraser edits are raster; Ink API stroke list would be wrong
+      return null;
+    }
     if (onProgress) onProgress("系統手寫引擎辨識中…");
     try {
       const drawing = recognizer.startDrawing({
