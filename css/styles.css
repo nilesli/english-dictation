@@ -369,9 +369,14 @@ input, textarea, select {
 
 .feedback {
   margin-top: 0.85rem;
+  margin-bottom: 0.65rem;
   padding: 0.85rem 1rem;
   border-radius: 12px;
   font-weight: 700;
+}
+#quiz-after {
+  clear: both;
+  position: relative;
 }
 .feedback.ok { background: var(--ok-bg); color: var(--ok); }
 .feedback.bad { background: var(--err-bg); color: var(--err); }
@@ -849,7 +854,7 @@ table.hist th {
     margin-bottom: 0.65rem;
   }
 
-  /* Quiz run: answer+keyboard full width, listen below (d15) */
+  /* Quiz run: answer+keyboard full width, listen below; feedback above after (d16) */
   #quiz-run {
     display: grid;
     grid-template-columns: 1fr;
@@ -858,6 +863,7 @@ table.hist th {
       "write"
       "listen"
       "actions"
+      "feedback"
       "after";
     gap: 0.5rem;
     align-items: start;
@@ -906,10 +912,19 @@ table.hist th {
     grid-area: actions;
   }
   #quiz-run > #quiz-feedback {
-    grid-area: after;
+    grid-area: feedback;
+    margin-top: 0.35rem;
+    margin-bottom: 0.65rem;
+    position: relative;
+    z-index: 1;
   }
   #quiz-run > #quiz-after {
     grid-area: after;
+    clear: both;
+    position: relative;
+    z-index: 0;
+    margin-top: 0;
+    padding-bottom: 0.35rem;
   }
   #quiz-run .kb-answer {
     min-height: 3.4rem;

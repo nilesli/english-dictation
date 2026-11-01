@@ -1,4 +1,4 @@
-/* 英文默書温習 · app shell · d15 */
+/* 英文默書温習 · app shell · d16 */
 (function () {
   "use strict";
 
@@ -674,6 +674,11 @@
     }
     var st = $("#kb-status");
     if (st) st.textContent = "已輸入：「" + user + "」";
+    try {
+      if (fb && typeof fb.scrollIntoView === "function") {
+        fb.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    } catch (e) {}
   }
 
   function rewriteQuiz() {
