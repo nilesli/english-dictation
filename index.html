@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>英文默書温習</title>
+  <link rel="stylesheet" href="css/styles.css?v=20261101d5" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="inner">
+      <div>
+        <h1 id="hdr-title">英文默書温習</h1>
+        <p class="sub" id="hdr-sub">慢速朗讀 · 温習同模擬默書</p>
+      </div>
+      <button type="button" class="nav-back" id="btn-home" hidden>← 主頁</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- HOME -->
+    <section class="view active" id="view-home" aria-label="主頁">
+      <div class="unit-badge" id="unit-badge">載入中…</div>
+      <div class="hero">
+        <h2>揀模式開始</h2>
+        <p>預設慢速朗讀（約 0.75×），方便聽清楚。建議用 iPad／手機喇叭或耳機。</p>
+      </div>
+
+      <div class="nick-bar" aria-label="練習暱稱">
+        <label for="home-nickname">暱稱</label>
+        <input id="home-nickname" type="text" maxlength="40" placeholder="細妹" autocomplete="nickname" />
+        <span class="nick-hint">默書完會連分數同錯字上傳雲端（方便分析）</span>
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="btn-primary" id="btn-goto-study">📖 温習</button>
+        <button type="button" class="btn-primary" id="btn-goto-quiz">✏️ 模擬默書</button>
+        <button type="button" class="btn-secondary" id="btn-goto-manage">⚙️ 管理範圍</button>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">朗讀設定</h3>
+        <div class="settings-grid">
+          <div class="field">
+            <label for="rate-slider">速度：<span id="rate-label">0.75</span>×</label>
+            <input id="rate-slider" type="range" min="0.5" max="1" step="0.05" value="0.75" />
+            <p class="hint">愈細愈慢；預設 0.75（細妹較易聽清）</p>
+          </div>
+          <div class="field">
+            <label>口音</label>
+            <div class="seg" role="group" aria-label="口音">
+              <button type="button" class="active" data-lang="en-GB" id="lang-gb">英式 en-GB</button>
+              <button type="button" data-lang="en-US" id="lang-us">美式 en-US</button>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-replay" id="btn-test-speak">🔊 試聽「spaghetti」</button>
+        </div>
+        <p class="meta-line" id="speech-support"></p>
+      </div>
+
+
+    <details class="teacher-panel" id="teacher-panel">
+      <summary>老師／家長：雲端場次（分數＋錯字）</summary>
+      <p class="teacher-meta" id="teacher-meta">撳開或網址加 <code>?teacher=1</code> 載入最近默書場次，方便分析。</p>
+      <p><button type="button" class="btn-secondary" id="btn-teacher-refresh">重新整理</button></p>
+      <div id="teacher-body"><p class="empty-note">尚未載入。</p></div>
+    </details>
+
+      <p class="footer-note">英文默書温習 · d5 · ?v=20261101d5 · 本機＋雲端成績</p>
+    </section>
+
+    <!-- MANAGE -->
+    <section class="view" id="view-manage" aria-label="管理範圍">
+      <div class="hero">
+        <h2>管理範圍</h2>
+        <p>貼上詞語（一行一個；可用 <code>英文 | 中文</code>），或上傳默書紙相片做 OCR。</p>
+      </div>
+
+      <div class="card">
+        <div class="btn-row">
+          <button type="button" class="btn-primary" id="btn-load-u4">載入 4A U4 範例</button>
+          <button type="button" class="btn-secondary" id="btn-clear-custom">還原用範例單元</button>
+        </div>
+        <p class="meta-line">範例相：<a class="sample-link" href="assets/sample-scope-4a-u4.jpg" target="_blank" rel="noopener">sample-scope-4a-u4.jpg</a></p>
+      </div>
+
+      <div class="card">
+        <div class="field">
+          <label for="paste-area">貼上文字範圍</label>
+          <textarea id="paste-area" placeholder="prawn salad | 蝦沙律&#10;spaghetti&#10;…"></textarea>
+        </div>
+        <div class="field" style="margin-top:0.75rem">
+          <label for="unit-title-input">單元名稱</label>
+          <input type="text" id="unit-title-input" placeholder="例如：4A U4 – Eating out" />
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-ok" id="btn-save-paste">儲存呢份範圍</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0">相片 OCR</h3>
+        <p class="hint" style="color:var(--muted);margin-top:0">需要上網載入 Tesseract（CDN）。辨識後請檢查再儲存。</p>
+        <div class="field">
+          <label for="ocr-file">上傳相片</label>
+          <input type="file" id="ocr-file" accept="image/*" capture="environment" />
+        </div>
+        <img id="ocr-preview" class="thumb" alt="" hidden />
+        <p class="ocr-status" id="ocr-status" aria-live="polite"></p>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="btn-run-ocr">開始辨識</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STUDY -->
+    <section class="view" id="view-study" aria-label="温習">
+      <div class="hero">
+        <h2>温習</h2>
+        <p>睇字、聽慢速朗讀；撳「再聽一次」可重播而家呢張（唔限次數）。</p>
+      </div>
+
+      <div class="card">
+        <label class="meta-line">揀 Part</label>
+        <div class="seg" id="study-parts" role="group">
+          <button type="button" data-part="A" class="active">A</button>
+          <button type="button" data-part="B">B</button>
+          <button type="button" data-part="C">C</button>
+          <button type="button" data-part="D">D</button>
+          <button type="button" data-part="ALL">全部</button>
+        </div>
+        <div class="btn-row" style="margin-top:0.75rem">
+          <button type="button" class="btn-secondary" id="btn-toggle-spell">隱藏拼寫</button>
+        </div>
+      </div>
+
+      <div class="card study-card" id="study-panel">
+        <p class="meta-line" id="study-meta">—</p>
+        <div id="study-body"></div>
+        <div class="btn-row">
+          <button type="button" class="btn-replay" id="btn-study-speak" aria-label="再聽一次">🔊 再聽一次</button>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="btn-study-prev">上一張</button>
+          <button type="button" class="btn-primary" id="btn-study-next">下一張</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUIZ -->
+    <section class="view" id="view-quiz" aria-label="模擬默書">
+      <div class="hero">
+        <h2>模擬默書</h2>
+        <p>聽完先寫；听唔清可隨時撳「再聽一次」。開始時可調每題自動讀幾次。</p>
+      </div>
+
+      <div class="card" id="quiz-setup">
+        <label class="meta-line">揀 Part（可多選）</label>
+        <p class="hint" style="color:var(--muted);margin:0.25rem 0 0.5rem">撳 A／B／C／D 開關；「全部」一次選晒。只考選中部分。</p>
+        <div class="seg multi" id="quiz-parts" role="group" aria-label="默書範圍多選">
+          <button type="button" data-part="A" class="active" aria-pressed="true">A</button>
+          <button type="button" data-part="B" aria-pressed="false">B</button>
+          <button type="button" data-part="C" aria-pressed="false">C</button>
+          <button type="button" data-part="D" aria-pressed="false">D</button>
+          <button type="button" data-part="ALL" aria-pressed="false">全部</button>
+        </div>
+        <p class="meta-line" id="quiz-parts-label">已選：Part A</p>
+        <div class="field" style="margin-top:0.75rem">
+          <label for="quiz-nickname">暱稱（上傳用）</label>
+          <input type="text" id="quiz-nickname" maxlength="40" placeholder="細妹" autocomplete="nickname" />
+        </div>
+        <div class="settings-grid" style="margin-top:1rem">
+          <div class="field">
+            <label for="quiz-repeats">每題讀幾次</label>
+            <select id="quiz-repeats">
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="quiz-gap">間隔（秒）</label>
+            <select id="quiz-gap">
+              <option value="0.5">0.5</option>
+              <option value="1">1</option>
+              <option value="1.5" selected>1.5</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="quiz-bmode">Part B 方式</label>
+            <select id="quiz-bmode">
+              <option value="sentence" selected>逐段／整句</option>
+              <option value="focus">只默底線重點</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="quiz-cmode">Part C 方式</label>
+            <select id="quiz-cmode">
+              <option value="set" selected>三式一套</option>
+              <option value="forms">逐個 verb form</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-primary" id="btn-quiz-start">開始默書</button>
+        </div>
+      </div>
+
+      <div class="card" id="quiz-run" hidden>
+        <p class="meta-line" id="quiz-meta">—</p>
+        <div class="progress-bar" aria-hidden="true"><span id="quiz-progress"></span></div>
+        <div class="quiz-hidden" id="quiz-prompt">🔊 聽朗讀，然後用手寫</div>
+        <div class="btn-row replay-row">
+          <button type="button" class="btn-replay" id="btn-quiz-replay" aria-label="再聽一次">🔊 再聽一次</button>
+        </div>
+        <p class="replay-hint" id="quiz-replay-hint">聽唔清就撳「再聽一次」（唔限次數）</p>
+        <div class="hw-wrap">
+          <div class="hw-toolbar">
+            <span class="meta-line">用手寫（手指／觸控筆）· 唔使鍵盤</span>
+            <label class="hw-check"><input type="checkbox" id="hw-grid" checked /> 格線</label>
+          </div>
+          <div class="hw-canvas-box">
+            <canvas id="hw-canvas" width="640" height="240" aria-label="默書手寫畫板"></canvas>
+          </div>
+          <div class="btn-row hw-tools">
+            <button type="button" class="btn-secondary" id="btn-hw-undo">↩ 撤銷</button>
+            <button type="button" class="btn-danger" id="btn-hw-clear">清除</button>
+            <label class="hw-pen-label">筆粗
+              <input type="range" id="hw-pen" min="3" max="12" step="1" value="5" />
+            </label>
+          </div>
+          <p class="ocr-status" id="hw-status" aria-live="polite"></p>
+        </div>
+        <div class="btn-row replay-row">
+          <button type="button" class="btn-replay" id="btn-quiz-replay-bottom" aria-label="再聽一次">🔊 再聽一次</button>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-ok" id="btn-quiz-check">核對手寫</button>
+          <button type="button" class="btn-secondary" id="btn-quiz-skip">跳過</button>
+        </div>
+        <div id="quiz-feedback" class="feedback" hidden></div>
+        <div class="btn-row" id="quiz-after" hidden>
+          <button type="button" class="btn-primary" id="btn-quiz-next">下一題</button>
+          <button type="button" class="btn-secondary" id="btn-quiz-rewrite">再寫一次</button>
+        </div>
+      </div>
+
+      <div class="card score-box" id="quiz-result" hidden>
+        <p class="meta-line">今輪成績</p>
+        <div class="big" id="quiz-score">0/0</div>
+        <p id="quiz-score-pct"></p>
+        <p class="meta-line" style="margin-top:0.75rem">錯字一覽（正確 vs 辨識／留空）</p>
+        <ul class="wrong-list" id="quiz-wrongs"></ul>
+        <p class="ocr-status" id="quiz-upload-status" aria-live="polite" hidden></p>
+        <div class="btn-row">
+          <button type="button" class="btn-primary" id="btn-quiz-again">再默一次</button>
+          <button type="button" class="btn-secondary" id="btn-quiz-home">返主頁</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" hidden role="status"></div>
+
+  <script src="js/data-u4.js?v=20261101d5"></script>
+  <script src="js/storage.js?v=20261101d5"></script>
+  <script src="js/firebase-config.js?v=20261101d5"></script>
+  <script src="js/speech.js?v=20261101d5"></script>
+  <script src="js/ocr.js?v=20261101d5"></script>
+  <script src="js/handwriting.js?v=20261101d5"></script>
+  <script src="js/app.js?v=20261101d5"></script>
+  <script src="js/cloud.js?v=20261101d5"></script>
+</body>
+</html>
