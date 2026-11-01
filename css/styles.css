@@ -1,4 +1,4 @@
-/* 英文默書温習 · iPad-first · d10 · ?v=20261101d10 */
+/* 英文默書温習 · iPad-first · d11 · ?v=20261101d11 */
 :root {
   --primary: #3B82F6;
   --primary-dark: #2563EB;
@@ -710,7 +710,7 @@ table.hist th {
 }
 
 
-/* ----- iPad landscape: use full width (d10) ----- */
+/* ----- iPad landscape: full-width write, listen below (d11) ----- */
 @media (orientation: landscape) and (min-width: 900px) {
   :root {
     --maxw: 100%;
@@ -753,17 +753,18 @@ table.hist th {
     margin-bottom: 0.65rem;
   }
 
-  /* Quiz run: listen controls | write pad side-by-side */
+  /* Quiz run: write pad full width, listen controls below pad (above actions) */
   #quiz-run {
     display: grid;
-    grid-template-columns: minmax(240px, 0.95fr) minmax(320px, 1.35fr);
+    grid-template-columns: 1fr;
     grid-template-areas:
-      "meta meta"
-      "listen write"
-      "actions actions"
-      "preview preview"
-      "after after";
-    gap: 0.65rem 1rem;
+      "meta"
+      "write"
+      "listen"
+      "actions"
+      "preview"
+      "after";
+    gap: 0.5rem;
     align-items: start;
   }
   #quiz-run > #quiz-meta {
@@ -776,6 +777,31 @@ table.hist th {
   }
   #quiz-run > .quiz-listen-pane {
     grid-area: listen;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem 0.75rem;
+    margin: 0.15rem 0 0;
+  }
+  #quiz-run > .quiz-listen-pane .quiz-hidden {
+    flex: 1 1 100%;
+    margin: 0;
+    padding: 0.55rem 0.85rem;
+    font-size: 0.98rem;
+  }
+  #quiz-run > .quiz-listen-pane .replay-row {
+    flex: 1 1 220px;
+    margin: 0;
+  }
+  #quiz-run > .quiz-listen-pane .btn-replay {
+    min-height: 56px;
+    font-size: 1.12rem;
+  }
+  #quiz-run > .quiz-listen-pane .replay-hint {
+    flex: 1 1 200px;
+    margin: 0;
+    text-align: left;
+    font-size: 0.88rem;
   }
   #quiz-run > .hw-wrap {
     grid-area: write;
@@ -798,7 +824,7 @@ table.hist th {
     min-height: 220px;
   }
   #hw-canvas {
-    min-height: 200px;
+    min-height: 210px;
   }
 
   /* Study: picker + panel side-by-side when Part B picker visible */
@@ -847,14 +873,17 @@ table.hist th {
   }
 }
 
-/* Very wide iPads / landscape tablets */
+/* Very wide iPads / landscape tablets — keep quiz single-column, taller pad */
 @media (orientation: landscape) and (min-width: 1100px) {
   .wrap {
     padding-left: 1rem;
     padding-right: 1rem;
   }
   #quiz-run {
-    grid-template-columns: minmax(280px, 0.85fr) minmax(420px, 1.45fr);
+    grid-template-columns: 1fr;
+  }
+  #quiz-run .hw-canvas-box {
+    min-height: 250px;
   }
   #hw-canvas {
     min-height: 240px;

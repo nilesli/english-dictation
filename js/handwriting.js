@@ -1,4 +1,4 @@
-/* Handwriting pad + recognition · d10
+/* Handwriting pad + recognition · d11
  * OCR export: crop ink, upscale, thicken strokes, pure white bg / black ink.
  * Grading stays strict string match in app.js — no fuzzy tolerance.
  */
@@ -29,7 +29,10 @@
       var baseH = opts.height;
       if (!baseH) {
         if (landscape) {
-          baseH = Math.round(Math.min(320, Math.max(220, cssW * 0.28)));
+          // Full-width pad in landscape: prefer viewport height so pad stays usable
+          // with listen controls stacked below (not beside).
+          var vh = window.innerHeight || 700;
+          baseH = Math.round(Math.min(300, Math.max(210, Math.min(cssW * 0.22, vh * 0.34))));
         } else {
           baseH = Math.round(Math.min(280, Math.max(180, cssW * 0.42)));
         }
