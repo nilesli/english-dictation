@@ -1,4 +1,4 @@
-/* 英文默書温習 · app shell · d12 */
+/* 英文默書温習 · app shell · d13 */
 (function () {
   "use strict";
 
@@ -55,6 +55,8 @@
   let quizChecked = false;
   let quizCorrect = 0;
   let quizWrongs = [];
+  let quizRewriteTotal = 0;
+  let quizItemRewrites = {}; // quizIdx -> rewrite press count this session
   let hwPad = null;
   let hwRecognizing = false;
   let studySpeakChain = 0;
@@ -465,6 +467,8 @@
     quizIdx = 0;
     quizCorrect = 0;
     quizWrongs = [];
+    quizRewriteTotal = 0;
+    quizItemRewrites = {};
     quizChecked = false;
     $("#quiz-setup").hidden = true;
     $("#quiz-result").hidden = true;
@@ -767,6 +771,7 @@
         expect: item.answer,
         got: user,
         part: item.part,
+        rewriteCount: Number(quizItemRewrites[quizIdx]) || 0,
       });
       fb.className = "feedback bad";
       fb.textContent =
@@ -783,6 +788,8 @@
   }
 
   function rewriteQuiz() {
+    quizRewriteTotal += 1;
+    quizItemRewrites[quizIdx] = (Number(quizItemRewrites[quizIdx]) || 0) + 1;
     const fb = $("#quiz-feedback");
     const wasOk = fb && !fb.hidden && fb.classList.contains("ok");
     const wasBad = fb && !fb.hidden && fb.classList.contains("bad");
@@ -825,6 +832,7 @@
       expect: item.answer,
       got: "(跳過)",
       part: item.part,
+      rewriteCount: Number(quizItemRewrites[quizIdx]) || 0,
     });
     nextQuiz();
   }
@@ -847,6 +855,11 @@
     const partsLabel = parts.length === 4 ? "全部" : parts.join("、");
     $("#quiz-score-pct").textContent =
       "正確率 " + pct + "% · 範圍 Part " + partsLabel;
+    var rwEl = $("#quiz-rewrite-count");
+    if (rwEl) {
+      rwEl.hidden = false;
+      rwEl.textContent = "再寫 " + quizRewriteTotal + " 次";
+    }
     const ul = $("#quiz-wrongs");
     ul.innerHTML = "";
     const wrongsNorm = quizWrongs.map(function (w) {
@@ -857,6 +870,7 @@
         partId: w.part || w.partId || "",
         part: w.part || w.partId || "",
         expect: w.expect != null ? w.expect : w.expected || "",
+        rewriteCount: Math.min(9999, Math.max(0, Number(w.rewriteCount) || 0)),
       };
     });
     if (!wrongsNorm.length) {
@@ -902,8 +916,10 @@
           got: w.got,
           partId: w.partId,
           id: w.id,
+          rewriteCount: w.rewriteCount || 0,
         };
       }),
+      rewriteTotal: quizRewriteTotal,
       nickname: nickname,
       deviceId: deviceId,
     };
@@ -919,6 +935,7 @@
       score: quizCorrect,
       total: total,
       wrongs: historyEntry.wrongs,
+      rewriteTotal: quizRewriteTotal,
     };
     const uploadEl = $("#quiz-upload-status");
     if (uploadEl) {
@@ -1142,13 +1159,14 @@
       html += '<h3 class="teacher-h3">最近場次</h3>';
       html +=
         '<div class="hist-table-wrap"><table class="hist teacher-hist"><thead><tr>' +
-        "<th>時間（香港）</th><th>暱稱</th><th>範圍</th><th>分數</th><th>錯字</th>" +
+        "<th>時間（香港）</th><th>暱稱</th><th>範圍</th><th>分數</th><th>再寫</th><th>錯字</th>" +
         "</tr></thead><tbody>";
       sessions.forEach(function (s) {
         const total = Number(s.total) || 0;
         const score = Number(s.score != null ? s.score : s.correct) || 0;
         const pct = total ? Math.round((score / total) * 100) : 0;
         const parts = Array.isArray(s.parts) ? s.parts.join("、") : "";
+        var rwTotal = Math.min(9999, Math.max(0, Number(s.rewriteTotal) || 0));
         html +=
           "<tr><td>" +
           escapeHtml(s.when || s.whenIso || "") +
@@ -1158,6 +1176,8 @@
           escapeHtml((s.unit || "") + (parts ? " · Part " + parts : "")) +
           "</td><td>" +
           escapeHtml(String(score) + "/" + String(total) + "（" + pct + "%）") +
+          "</td><td>" +
+          escapeHtml(String(rwTotal)) +
           '</td><td class="hist-wrongs">' +
           formatSessionWrongs(s) +
           "</td></tr>";

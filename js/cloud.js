@@ -3,7 +3,7 @@
  * Classic script (not type=module) so file:// / preview never blocks app boot.
  * Firebase ESM loaded lazily via dynamic import() from CDN.
  * Path: artifacts/english-dictation-default/public/data/english_dictation/sessions/entries/{id}
- * d12 · ?v=20261101d12
+ * d13 · ?v=20261101d13
  */
 (function (global) {
   "use strict";
@@ -106,15 +106,19 @@
     const wrongs = Array.isArray(partial.wrongs)
       ? partial.wrongs
           .map(function (w) {
-            return {
+            var rc = Math.min(9999, Math.max(0, Number(w && w.rewriteCount) || 0));
+            var row = {
               expected: String((w && (w.expected != null ? w.expected : w.expect)) || "").slice(0, 200),
               got: String((w && w.got != null ? w.got : "") || "").slice(0, 200),
               partId: String((w && (w.partId != null ? w.partId : w.part)) || "").slice(0, 8),
               id: String((w && w.id) || "").slice(0, 40),
             };
+            if (rc > 0) row.rewriteCount = rc;
+            return row;
           })
           .slice(0, 120)
       : [];
+    var rewriteTotal = Math.min(9999, Math.max(0, Number(partial.rewriteTotal) || 0));
     return {
       when: whenHk,
       whenIso: partial.whenIso || new Date().toISOString(),
@@ -124,6 +128,7 @@
       parts: parts,
       score: Number(partial.score != null ? partial.score : partial.correct) || 0,
       total: Number(partial.total) || 0,
+      rewriteTotal: rewriteTotal,
       wrongs: wrongs,
       createdAtClient: new Date().toISOString(),
     };

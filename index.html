@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>英文默書温習</title>
-  <link rel="stylesheet" href="css/styles.css?v=20261101d12" />
+  <link rel="stylesheet" href="css/styles.css?v=20261101d13" />
 </head>
 <body>
   <header class="app-header">
@@ -70,7 +70,7 @@
       <div id="teacher-body"><p class="empty-note">尚未載入。</p></div>
     </details>
 
-      <p class="footer-note">英文默書温習 · d12 · ?v=20261101d12 · 本機＋雲端成績</p>
+      <p class="footer-note">英文默書温習 · d13 · ?v=20261101d13 · 本機＋雲端成績</p>
     </section>
 
     <!-- MANAGE -->
@@ -248,7 +248,7 @@
           <div class="btn-row hw-tools">
             <button type="button" class="btn-secondary" id="btn-hw-undo">↩ 撤銷</button>
             <button type="button" class="btn-danger" id="btn-hw-clear">清除</button>
-            <label class="hw-pen-label" id="hw-size-label">筆粗／擦膠大小
+            <label class="hw-pen-label" id="hw-size-label">筆粗／擦膠感應
               <input type="range" id="hw-pen" min="3" max="16" step="1" value="5" />
             </label>
           </div>
@@ -280,6 +280,7 @@
         <p class="meta-line">今輪成績</p>
         <div class="big" id="quiz-score">0/0</div>
         <p id="quiz-score-pct"></p>
+        <p class="meta-line" id="quiz-rewrite-count" hidden></p>
         <p class="meta-line" style="margin-top:0.75rem">錯字一覽（正確 vs 辨識／留空）</p>
         <ul class="wrong-list" id="quiz-wrongs"></ul>
         <p class="ocr-status" id="quiz-upload-status" aria-live="polite" hidden></p>
@@ -293,13 +294,13 @@
 
   <div class="toast" id="toast" hidden role="status"></div>
 
-  <script src="js/data-u4.js?v=20261101d12"></script>
-  <script src="js/storage.js?v=20261101d12"></script>
-  <script src="js/firebase-config.js?v=20261101d12"></script>
-  <script src="js/speech.js?v=20261101d12"></script>
-  <script src="js/ocr.js?v=20261101d12"></script>
-  <script src="js/handwriting.js?v=20261101d12"></script>
-  <script src="js/app.js?v=20261101d12"></script>
-  <script src="js/cloud.js?v=20261101d12"></script>
+  <script src="js/data-u4.js?v=20261101d13"></script>
+  <script src="js/storage.js?v=20261101d13"></script>
+  <script src="js/firebase-config.js?v=20261101d13"></script>
+  <script src="js/speech.js?v=20261101d13"></script>
+  <script src="js/ocr.js?v=20261101d13"></script>
+  <script src="js/handwriting.js?v=20261101d13"></script>
+  <script src="js/app.js?v=20261101d13"></script>
+  <script src="js/cloud.js?v=20261101d13"></script>
 </body>
 </html>

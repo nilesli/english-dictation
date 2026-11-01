@@ -1,5 +1,6 @@
-/* Handwriting pad + recognition · d12
+/* Handwriting pad + recognition · d13
  * OCR export: crop ink, upscale, thicken strokes, pure white bg / black ink.
+ * Eraser: whole-stroke hit-test delete (not white-paint). Undo restores removed stroke.
  * Grading stays strict string match in app.js — no fuzzy tolerance.
  */
 (function (global) {
@@ -12,9 +13,10 @@
       drawing: false,
       strokes: [],
       current: null,
+      undoLog: [], // {op:'add'} | {op:'remove', stroke, index}
       penWidth: opts.penWidth || 5,
       eraserWidth: opts.eraserWidth || 14,
-      tool: "pen", // "pen" | "erase"
+      tool: "pen", // "pen" | "erase" (erase = whole-stroke delete on hit)
       color: opts.color || "#0f172a",
       showGrid: opts.showGrid !== false,
       dpr: 1,
@@ -76,20 +78,20 @@
     }
 
     function strokeWidth(stroke) {
-      if (stroke.mode === "erase") {
-        return stroke.width || state.eraserWidth || 14;
-      }
       return stroke.width || state.penWidth || 5;
+    }
+
+    function isInkStroke(stroke) {
+      return !!(stroke && stroke.points && stroke.points.length && stroke.mode !== "erase");
     }
 
     function paintStrokes(targetCtx, strokes, penScale, inkColor) {
       targetCtx.lineCap = "round";
       targetCtx.lineJoin = "round";
+      targetCtx.globalCompositeOperation = "source-over";
       strokes.forEach(function (stroke) {
-        if (!stroke.points || !stroke.points.length) return;
-        var erase = stroke.mode === "erase";
-        targetCtx.globalCompositeOperation = "source-over";
-        targetCtx.strokeStyle = erase ? "#ffffff" : inkColor || state.color || "#000000";
+        if (!isInkStroke(stroke)) return; // skip legacy white-erase strokes
+        targetCtx.strokeStyle = inkColor || state.color || "#000000";
         targetCtx.lineWidth = strokeWidth(stroke) * (penScale || 1);
         targetCtx.beginPath();
         targetCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
@@ -98,7 +100,6 @@
         }
         targetCtx.stroke();
       });
-      targetCtx.globalCompositeOperation = "source-over";
     }
 
     function redraw() {
@@ -107,7 +108,6 @@
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, w, h);
-      // Ink first (pen + white eraser), grid on top so erase won't wipe guides
       paintStrokes(ctx, state.strokes, 1, state.color);
       if (state.current && state.current.points.length) {
         paintStrokes(ctx, [state.current], 1, state.color);
@@ -132,23 +132,107 @@
       return { x: clientX - rect.left, y: clientY - rect.top };
     }
 
+    /** Distance from point to segment AB */
+    function distPointToSeg(px, py, ax, ay, bx, by) {
+      var dx = bx - ax;
+      var dy = by - ay;
+      var len2 = dx * dx + dy * dy;
+      if (len2 <= 1e-6) {
+        var ex = px - ax;
+        var ey = py - ay;
+        return Math.sqrt(ex * ex + ey * ey);
+      }
+      var t = ((px - ax) * dx + (py - ay) * dy) / len2;
+      if (t < 0) t = 0;
+      else if (t > 1) t = 1;
+      var qx = ax + t * dx;
+      var qy = ay + t * dy;
+      var ex = px - qx;
+      var ey = py - qy;
+      return Math.sqrt(ex * ex + ey * ey);
+    }
+
+    function strokeHitDistance(stroke, p) {
+      var pts = stroke.points || [];
+      if (!pts.length) return Infinity;
+      if (pts.length === 1) {
+        var dx = p.x - pts[0].x;
+        var dy = p.y - pts[0].y;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+      var best = Infinity;
+      for (var i = 1; i < pts.length; i++) {
+        var d = distPointToSeg(
+          p.x,
+          p.y,
+          pts[i - 1].x,
+          pts[i - 1].y,
+          pts[i].x,
+          pts[i].y
+        );
+        if (d < best) best = d;
+      }
+      return best;
+    }
+
+    function hitRadiusFor(stroke) {
+      // Slider eraser size = hit tolerance; include half stroke width so thick ink is easy to grab
+      var halfStroke = strokeWidth(stroke) / 2;
+      var halfEraser = Math.max(4, (state.eraserWidth || 14) / 2);
+      return halfStroke + halfEraser;
+    }
+
+    /** Topmost (last-drawn) ink stroke within hit radius, or -1 */
+    function findHitStrokeIndex(p) {
+      var bestIdx = -1;
+      var bestDist = Infinity;
+      for (var i = state.strokes.length - 1; i >= 0; i--) {
+        var stroke = state.strokes[i];
+        if (!isInkStroke(stroke)) continue;
+        var d = strokeHitDistance(stroke, p);
+        var r = hitRadiusFor(stroke);
+        if (d <= r && d <= bestDist) {
+          bestDist = d;
+          bestIdx = i;
+          // Prefer topmost: first match from end is enough when distances similar
+          break;
+        }
+      }
+      return bestIdx;
+    }
+
+    function eraseStrokeAt(p) {
+      var idx = findHitStrokeIndex(p);
+      if (idx < 0) return false;
+      var removed = state.strokes.splice(idx, 1)[0];
+      state.undoLog.push({ op: "remove", stroke: removed, index: idx });
+      return true;
+    }
+
     function start(ev) {
       ev.preventDefault();
       state.drawing = true;
       const p = pos(ev);
       p.t = Date.now();
-      var mode = state.tool === "erase" ? "erase" : "pen";
-      var w =
-        mode === "erase"
-          ? Math.max(8, state.eraserWidth || state.penWidth * 2.5)
-          : state.penWidth;
-      state.current = { points: [p], width: w, mode: mode };
+      if (state.tool === "erase") {
+        state.current = null;
+        eraseStrokeAt(p);
+        redraw();
+        return;
+      }
+      state.current = { points: [p], width: state.penWidth, mode: "pen" };
       redraw();
     }
 
     function move(ev) {
-      if (!state.drawing || !state.current) return;
+      if (!state.drawing) return;
       ev.preventDefault();
+      if (state.tool === "erase") {
+        eraseStrokeAt(pos(ev));
+        redraw();
+        return;
+      }
+      if (!state.current) return;
       var pt = pos(ev);
       pt.t = Date.now();
       state.current.points.push(pt);
@@ -159,8 +243,14 @@
       if (!state.drawing) return;
       ev.preventDefault();
       state.drawing = false;
+      if (state.tool === "erase") {
+        state.current = null;
+        redraw();
+        return;
+      }
       if (state.current && state.current.points.length) {
         state.strokes.push(state.current);
+        state.undoLog.push({ op: "add" });
       }
       state.current = null;
       redraw();
@@ -189,12 +279,27 @@
     function clear() {
       state.strokes = [];
       state.current = null;
+      state.undoLog = [];
       redraw();
     }
 
     function undo() {
-      state.strokes.pop();
       state.current = null;
+      var act = state.undoLog.pop();
+      if (!act) {
+        // Fallback if log empty (legacy)
+        state.strokes.pop();
+        redraw();
+        return;
+      }
+      if (act.op === "add") {
+        state.strokes.pop();
+      } else if (act.op === "remove" && act.stroke) {
+        var i = typeof act.index === "number" ? act.index : state.strokes.length;
+        if (i < 0) i = 0;
+        if (i > state.strokes.length) i = state.strokes.length;
+        state.strokes.splice(i, 0, act.stroke);
+      }
       redraw();
     }
 
@@ -205,7 +310,7 @@
 
     function setPenWidth(w) {
       state.penWidth = Math.max(2, Math.min(16, Number(w) || 5));
-      // Same slider scales eraser (larger for mid-letter fixes)
+      // Same slider scales eraser hit tolerance (whole-stroke delete)
       state.eraserWidth = Math.max(8, Math.min(36, state.penWidth * 2.6));
     }
 
@@ -223,6 +328,7 @@
     }
 
     function hasEraseStrokes() {
+      // Legacy white-paint erase strokes only; whole-stroke delete removes ink from the list
       return state.strokes.some(function (s) {
         return s && s.mode === "erase";
       });
@@ -240,6 +346,7 @@
       const all = state.strokes.slice();
       if (state.current) all.push(state.current);
       all.forEach(function (stroke) {
+        if (!isInkStroke(stroke)) return;
         const half = (stroke.width || state.penWidth) / 2 + 1;
         (stroke.points || []).forEach(function (p) {
           minX = Math.min(minX, p.x - half);
@@ -294,13 +401,10 @@
       octx.lineCap = "round";
       octx.lineJoin = "round";
       state.strokes.forEach(function (stroke) {
-        if (!stroke.points || !stroke.points.length) return;
-        var erase = stroke.mode === "erase";
-        octx.strokeStyle = erase ? "#ffffff" : "#000000";
-        var baseW = erase
-          ? stroke.width || state.eraserWidth || 14
-          : stroke.width || state.penWidth;
-        octx.lineWidth = Math.max(erase ? 4 : 2.5, baseW * thick);
+        if (!isInkStroke(stroke)) return;
+        octx.strokeStyle = "#000000";
+        var baseW = stroke.width || state.penWidth;
+        octx.lineWidth = Math.max(2.5, baseW * thick);
         octx.beginPath();
         octx.moveTo(stroke.points[0].x, stroke.points[0].y);
         for (let i = 1; i < stroke.points.length; i++) {
@@ -477,7 +581,7 @@
     const recognizer = await getBrowserRecognizer();
     if (!recognizer || typeof pad.getInkStrokes !== "function") return null;
     if (pad.hasEraseStrokes && pad.hasEraseStrokes()) {
-      // Eraser edits are raster; Ink API stroke list would be wrong
+      // Legacy white-paint erase strokes would desync Ink API stroke list
       return null;
     }
     if (onProgress) onProgress("系統手寫引擎辨識中…");
