@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>英文默書温習</title>
-  <link rel="stylesheet" href="css/styles.css?v=20261101d7" />
+  <link rel="stylesheet" href="css/styles.css?v=20261101d8" />
 </head>
 <body>
   <header class="app-header">
@@ -70,7 +70,7 @@
       <div id="teacher-body"><p class="empty-note">尚未載入。</p></div>
     </details>
 
-      <p class="footer-note">英文默書温習 · d7 · ?v=20261101d7 · 本機＋雲端成績</p>
+      <p class="footer-note">英文默書温習 · d8 · ?v=20261101d8 · 本機＋雲端成績</p>
     </section>
 
     <!-- MANAGE -->
@@ -252,13 +252,24 @@
           <button type="button" class="btn-replay" id="btn-quiz-replay-bottom" aria-label="再聽一次">🔊 再聽一次</button>
         </div>
         <div class="btn-row">
-          <button type="button" class="btn-ok" id="btn-quiz-check">核對手寫</button>
+          <button type="button" class="btn-ok" id="btn-quiz-check">辨識手寫</button>
           <button type="button" class="btn-secondary" id="btn-quiz-skip">跳過</button>
         </div>
+
+        <div class="quiz-preview card-ish" id="quiz-preview" hidden>
+          <p class="meta-line">辨識結果（請睇清楚，確認先計分）</p>
+          <div class="quiz-preview-text" id="quiz-preview-text" aria-live="polite"></div>
+          <p class="meta-line" id="quiz-preview-method"></p>
+          <div class="btn-row">
+            <button type="button" class="btn-ok" id="btn-quiz-confirm">確認核對</button>
+            <button type="button" class="btn-secondary" id="btn-quiz-rewrite">再寫一次</button>
+          </div>
+        </div>
+
         <div id="quiz-feedback" class="feedback" hidden></div>
         <div class="btn-row" id="quiz-after" hidden>
           <button type="button" class="btn-primary" id="btn-quiz-next">下一題</button>
-          <button type="button" class="btn-secondary" id="btn-quiz-rewrite">再寫一次</button>
+          <button type="button" class="btn-secondary" id="btn-quiz-rewrite-after">再寫一次</button>
         </div>
       </div>
 
@@ -279,13 +290,13 @@
 
   <div class="toast" id="toast" hidden role="status"></div>
 
-  <script src="js/data-u4.js?v=20261101d7"></script>
-  <script src="js/storage.js?v=20261101d7"></script>
-  <script src="js/firebase-config.js?v=20261101d7"></script>
-  <script src="js/speech.js?v=20261101d7"></script>
-  <script src="js/ocr.js?v=20261101d7"></script>
-  <script src="js/handwriting.js?v=20261101d7"></script>
-  <script src="js/app.js?v=20261101d7"></script>
-  <script src="js/cloud.js?v=20261101d7"></script>
+  <script src="js/data-u4.js?v=20261101d8"></script>
+  <script src="js/storage.js?v=20261101d8"></script>
+  <script src="js/firebase-config.js?v=20261101d8"></script>
+  <script src="js/speech.js?v=20261101d8"></script>
+  <script src="js/ocr.js?v=20261101d8"></script>
+  <script src="js/handwriting.js?v=20261101d8"></script>
+  <script src="js/app.js?v=20261101d8"></script>
+  <script src="js/cloud.js?v=20261101d8"></script>
 </body>
 </html>

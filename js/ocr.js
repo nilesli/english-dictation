@@ -1,4 +1,4 @@
-/* Client-side OCR via tesseract.js CDN · d6
+/* Client-side OCR via tesseract.js CDN · d8
  * Handwriting path: high-contrast line OCR, a–z whitelist, reusable worker.
  */
 (function (global) {
@@ -128,7 +128,15 @@
       }
     }
 
-    return best.text || "";
+    // Return rich result when caller expects object; string still OK via String()
+    return {
+      text: best.text || "",
+      confidence: best.confidence || 0,
+      psm: best.psm || "",
+      toString: function () {
+        return this.text || "";
+      },
+    };
   }
 
   /** Heuristic clean: drop very short noise lines, keep letter-ish lines */

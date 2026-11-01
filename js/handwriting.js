@@ -1,4 +1,4 @@
-/* Handwriting pad + recognition · d6
+/* Handwriting pad + recognition · d8
  * OCR export: crop ink, upscale, thicken strokes, pure white bg / black ink.
  * Grading stays strict string match in app.js — no fuzzy tolerance.
  */
@@ -109,6 +109,7 @@
       ev.preventDefault();
       state.drawing = true;
       const p = pos(ev);
+      p.t = Date.now();
       state.current = { points: [p], width: state.penWidth };
       redraw();
     }
@@ -116,7 +117,9 @@
     function move(ev) {
       if (!state.drawing || !state.current) return;
       ev.preventDefault();
-      state.current.points.push(pos(ev));
+      var pt = pos(ev);
+      pt.t = Date.now();
+      state.current.points.push(pt);
       redraw();
     }
 
@@ -318,6 +321,22 @@
     resize();
     window.addEventListener("resize", resize);
 
+    function getInkStrokes() {
+      // HandwritingRecognition API stroke format: { points: [{x,y,t}] }
+      return state.strokes.map(function (stroke) {
+        var t0 = (stroke.points[0] && stroke.points[0].t) || Date.now();
+        return {
+          points: (stroke.points || []).map(function (p, i) {
+            return {
+              x: p.x,
+              y: p.y,
+              t: p.t != null ? p.t : t0 + i * 16,
+            };
+          }),
+        };
+      });
+    }
+
     return {
       resize: resize,
       clear: clear,
@@ -330,6 +349,7 @@
       buildOcrCanvas: buildOcrCanvas,
       toDataURL: toDataURL,
       redraw: redraw,
+      getInkStrokes: getInkStrokes,
     };
   }
 
@@ -340,37 +360,175 @@
       .replace(/[|]/g, "I")
       .replace(/\s+/g, " ")
       .trim();
-    // Strict alphabet + space + apostrophe/hyphen only (matches OCR whitelist)
     t = t.replace(/[^A-Za-z' \-]/g, "");
     return t.replace(/\s+/g, " ").trim();
   }
 
-  async function recognize(pad, onProgress) {
-    if (pad.isEmpty()) {
-      return { text: "", method: "empty" };
+  function scoreLatinText(text, confidence) {
+    const t = cleanHandText(text);
+    if (!t) return -1;
+    const letters = (t.match(/[A-Za-z]/g) || []).length;
+    const junk = (String(text || "").match(/[^A-Za-z' \-\s]/g) || []).length;
+    const conf = typeof confidence === "number" ? confidence : 50;
+    return letters * 3 - junk * 4 + conf * 0.15 + (/\s/.test(t) ? 1 : 0);
+  }
+
+  let hwRecognizerPromise = null;
+
+  function browserInkSupported() {
+    return (
+      typeof navigator !== "undefined" &&
+      typeof navigator.createHandwritingRecognizer === "function"
+    );
+  }
+
+  async function getBrowserRecognizer() {
+    if (!browserInkSupported()) return null;
+    if (hwRecognizerPromise) return hwRecognizerPromise;
+    hwRecognizerPromise = (async function () {
+      try {
+        if (typeof navigator.queryHandwritingRecognizer === "function") {
+          var q = await navigator.queryHandwritingRecognizer({ languages: ["en"] });
+          if (q === null) return null;
+        }
+        return await navigator.createHandwritingRecognizer({ languages: ["en"] });
+      } catch (e) {
+        console.warn("[DictationHandwriting] Ink API unavailable", e);
+        return null;
+      }
+    })();
+    return hwRecognizerPromise;
+  }
+
+  /**
+   * Try OS Handwriting Recognition API (ChromeOS / supporting browsers).
+   * Uses recorded ink strokes from the pad.
+   */
+  async function recognizeWithBrowserInk(pad, onProgress) {
+    const recognizer = await getBrowserRecognizer();
+    if (!recognizer || typeof pad.getInkStrokes !== "function") return null;
+    if (onProgress) onProgress("系統手寫引擎辨識中…");
+    try {
+      const drawing = recognizer.startDrawing({
+        recognitionType: "text",
+        inputType: "touch",
+        alternatives: 3,
+      });
+      const strokes = pad.getInkStrokes();
+      strokes.forEach(function (stroke) {
+        if (!stroke.points || !stroke.points.length) return;
+        // API expects HandwritingStroke with addPoint
+        if (typeof HandwritingStroke === "function") {
+          var hs = new HandwritingStroke();
+          stroke.points.forEach(function (pt) {
+            hs.addPoint({ x: pt.x, y: pt.y, t: pt.t });
+          });
+          drawing.addStroke(hs);
+        } else if (typeof drawing.addStroke === "function") {
+          drawing.addStroke(stroke);
+        }
+      });
+      const predictions = await drawing.getPrediction();
+      if (typeof drawing.clear === "function") drawing.clear();
+      const top = predictions && predictions[0];
+      const text = top && (top.text != null ? top.text : top);
+      const conf =
+        top && typeof top.confidence === "number" ? top.confidence * 100 : 70;
+      const cleaned = cleanHandText(text);
+      if (!cleaned) return null;
+      return {
+        text: cleaned,
+        method: "handwriting-recognition-api",
+        confidence: conf,
+        raw: text,
+        alternatives: (predictions || []).slice(1, 4).map(function (p) {
+          return cleanHandText(p && p.text != null ? p.text : p);
+        }),
+      };
+    } catch (e) {
+      console.warn("[DictationHandwriting] Ink recognize failed", e);
+      return null;
     }
-    if (onProgress) onProgress("準備手寫圖（加粗／放大）…");
+  }
+
+  async function recognizeWithTesseract(pad, onProgress) {
     if (!global.DictationOCR || !DictationOCR.recognize) {
       throw new Error("OCR 模組未載入");
     }
+    if (onProgress) onProgress("準備手寫圖（加粗／放大）…");
     const blob =
       typeof pad.toOcrBlob === "function" ? await pad.toOcrBlob() : await pad.toBlob();
     if (!blob) throw new Error("無法匯出畫板");
-
-    if (onProgress) onProgress("辨識手寫中…");
+    if (onProgress) onProgress("Tesseract 辨識中…");
     let raw;
+    let confidence = 55;
     if (typeof DictationOCR.recognizeHandwriting === "function") {
+      // enhanced API may return string still
       raw = await DictationOCR.recognizeHandwriting(blob, onProgress);
+      if (raw && typeof raw === "object" && raw.text != null) {
+        confidence = raw.confidence != null ? raw.confidence : confidence;
+        raw = raw.text;
+      }
     } else {
       raw = await DictationOCR.recognize(blob, onProgress);
     }
     const text = cleanHandText(raw);
-    return { text: text, method: "tesseract", raw: raw };
+    return {
+      text: text,
+      method: "tesseract",
+      confidence: confidence,
+      raw: raw,
+    };
+  }
+
+  /**
+   * Prefer browser Ink API when present; also run Tesseract and pick higher latin score.
+   * Never biases toward expected answer (strict grading stays in app.js).
+   */
+  async function recognize(pad, onProgress) {
+    if (pad.isEmpty()) {
+      return { text: "", method: "empty", confidence: 0 };
+    }
+
+    const jobs = [];
+    if (browserInkSupported()) {
+      jobs.push(
+        recognizeWithBrowserInk(pad, onProgress).catch(function () {
+          return null;
+        })
+      );
+    }
+    jobs.push(
+      recognizeWithTesseract(pad, onProgress).catch(function (e) {
+        console.warn("[DictationHandwriting] tesseract failed", e);
+        return null;
+      })
+    );
+
+    if (onProgress) onProgress("辨識手寫中…");
+    const results = await Promise.all(jobs);
+    let best = null;
+    let bestScore = -1;
+    results.forEach(function (r) {
+      if (!r || !r.text) return;
+      const sc = scoreLatinText(r.text, r.confidence);
+      if (sc > bestScore) {
+        bestScore = sc;
+        best = r;
+      }
+    });
+    if (!best) {
+      return { text: "", method: "none", confidence: 0 };
+    }
+    best.score = bestScore;
+    return best;
   }
 
   global.DictationHandwriting = {
     createPad: createPad,
     recognize: recognize,
     cleanHandText: cleanHandText,
+    browserInkSupported: browserInkSupported,
+    scoreLatinText: scoreLatinText,
   };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -1,4 +1,4 @@
-/* 英文默書温習 · app shell · d7 */
+/* 英文默書温習 · app shell · d8 */
 (function () {
   "use strict";
 
@@ -62,6 +62,8 @@
   let studyPartBChunk = 0;
   let studyPartBText = "";
   let quizPartBChunk = 0;
+  let pendingRecognizeText = "";
+  let pendingRecognizeMeta = "";
 
   function toast(msg) {
     const el = $("#toast");
@@ -505,10 +507,15 @@
     quizChecked = false;
     hwRecognizing = false;
     quizPartBChunk = 0;
+    pendingRecognizeText = "";
+    pendingRecognizeMeta = "";
     $("#quiz-feedback").hidden = true;
     $("#quiz-after").hidden = true;
+    var prev = $("#quiz-preview");
+    if (prev) prev.hidden = true;
     $("#btn-quiz-check").disabled = false;
-    $("#btn-quiz-check").textContent = "核對手寫";
+    $("#btn-quiz-check").textContent = "辨識手寫";
+    $("#btn-quiz-check").hidden = false;
     var meta =
       "Part " +
       item.part +
@@ -617,9 +624,43 @@
     speakQuizItem(true);
   }
 
+  function hideQuizPreview() {
+    var prev = $("#quiz-preview");
+    if (prev) prev.hidden = true;
+    pendingRecognizeText = "";
+    pendingRecognizeMeta = "";
+  }
+
+  function showQuizPreview(user, res) {
+    pendingRecognizeText = user;
+    var method = (res && res.method) || "";
+    var conf = res && res.confidence != null ? Math.round(Number(res.confidence)) : null;
+    pendingRecognizeMeta =
+      (method === "handwriting-recognition-api"
+        ? "系統手寫引擎"
+        : method === "tesseract"
+          ? "Tesseract OCR"
+          : method || "辨識") +
+      (conf != null ? " · 信心 " + conf : "");
+    var box = $("#quiz-preview");
+    var textEl = $("#quiz-preview-text");
+    var methodEl = $("#quiz-preview-method");
+    if (textEl) textEl.textContent = user;
+    if (methodEl) methodEl.textContent = pendingRecognizeMeta + " · 未計分，請確認";
+    if (box) box.hidden = false;
+    $("#quiz-feedback").hidden = true;
+    $("#quiz-after").hidden = true;
+    var chk = $("#btn-quiz-check");
+    if (chk) {
+      chk.disabled = false;
+      chk.textContent = "重新辨識";
+      chk.hidden = false;
+    }
+  }
+
+  /** Step 1: recognize only — no grade yet */
   function checkQuiz() {
     if (quizChecked || hwRecognizing) return;
-    const item = quizItems[quizIdx];
     const pad = ensureHwPad();
     if (!pad || pad.isEmpty()) {
       toast("請先喺畫板手寫答案");
@@ -629,7 +670,12 @@
     $("#btn-quiz-check").disabled = true;
     $("#btn-quiz-check").textContent = "辨識中…";
     const st = $("#hw-status");
-    if (st) st.textContent = "辨識手寫中（需要短暫上網載 OCR）…";
+    if (st) {
+      st.textContent = DictationHandwriting.browserInkSupported && DictationHandwriting.browserInkSupported()
+        ? "辨識手寫中（系統引擎＋OCR）…"
+        : "辨識手寫中（OCR；需要短暫上網）…";
+    }
+    hideQuizPreview();
 
     DictationHandwriting.recognize(pad, function (m) {
       if (st) st.textContent = m;
@@ -637,58 +683,76 @@
       .then(function (res) {
         hwRecognizing = false;
         const user = (res && res.text) || "";
-        const fb = $("#quiz-feedback");
-        // Always surface OCR text first (strict compare next)
-        if (st) st.textContent = user ? "辨識：「" + user + "」" : "認唔到字跡";
+        if (st) st.textContent = user ? "已辨識，請確認" : "認唔到字跡";
         if (!user) {
           quizChecked = false;
           $("#btn-quiz-check").disabled = false;
-          $("#btn-quiz-check").textContent = "核對手寫";
+          $("#btn-quiz-check").textContent = "辨識手寫";
+          const fb = $("#quiz-feedback");
           fb.hidden = false;
           fb.className = "feedback bad";
           fb.textContent = "認唔到，請寫清楚啲（可撳清除／再寫一次）";
           $("#quiz-after").hidden = false;
+          var ra = $("#btn-quiz-rewrite-after");
+          // show rewrite via after row without next? keep after with rewrite only feel — still show next hidden? 
+          // Use preview rewrite path: show after with rewrite
           return;
         }
-        quizChecked = true;
-        // Strict string match only (d6: no fuzzy / OCR-tolerance)
-        const ok = answersMatch(item, user);
-        fb.hidden = false;
-        if (ok) {
-          quizCorrect += 1;
-          fb.className = "feedback ok";
-          fb.textContent = "✅ 正確！辨識：「" + user + "」";
-          $("#quiz-after").hidden = false;
-          $("#btn-quiz-check").textContent = "已核對";
-        } else {
-          quizWrongs.push({
-            id: item.id,
-            expect: item.answer,
-            got: user,
-            part: item.part,
-          });
-          fb.className = "feedback bad";
-          fb.textContent =
-            "❌ 唔啱。辨識：「" + user + "」· 正確：「" + item.answer + "」";
-          $("#quiz-after").hidden = false;
-          $("#btn-quiz-check").textContent = "已核對";
-        }
+        showQuizPreview(user, res);
       })
       .catch(function (e) {
         hwRecognizing = false;
         $("#btn-quiz-check").disabled = false;
-        $("#btn-quiz-check").textContent = "核對手寫";
+        $("#btn-quiz-check").textContent = "辨識手寫";
         const msg = e && e.message ? e.message : "辨識失敗";
         if (st) st.textContent = msg;
         toast(msg);
       });
   }
 
+  /** Step 2: strict === grade after user confirms preview */
+  function confirmQuizGrade() {
+    if (quizChecked || hwRecognizing) return;
+    const item = quizItems[quizIdx];
+    const user = pendingRecognizeText;
+    if (!user) {
+      toast("未有辨識結果，請先撳「辨識手寫」");
+      return;
+    }
+    quizChecked = true;
+    hideQuizPreview();
+    const ok = answersMatch(item, user); // strict normalize ===
+    const fb = $("#quiz-feedback");
+    fb.hidden = false;
+    if (ok) {
+      quizCorrect += 1;
+      fb.className = "feedback ok";
+      fb.textContent = "✅ 正確！辨識：「" + user + "」";
+    } else {
+      quizWrongs.push({
+        id: item.id,
+        expect: item.answer,
+        got: user,
+        part: item.part,
+      });
+      fb.className = "feedback bad";
+      fb.textContent =
+        "❌ 唔啱。辨識：「" + user + "」· 正確：「" + item.answer + "」";
+    }
+    $("#quiz-after").hidden = false;
+    var chk = $("#btn-quiz-check");
+    if (chk) {
+      chk.textContent = "已核對";
+      chk.disabled = true;
+    }
+    var st = $("#hw-status");
+    if (st) st.textContent = "辨識：「" + user + "」";
+  }
+
   function rewriteQuiz() {
     const fb = $("#quiz-feedback");
     const wasOk = fb && !fb.hidden && fb.classList.contains("ok");
     const wasBad = fb && !fb.hidden && fb.classList.contains("bad");
-    // Undo score/wrong only when redoing after a counted check
     if (quizChecked && wasOk) {
       quizCorrect = Math.max(0, quizCorrect - 1);
     }
@@ -702,10 +766,12 @@
     }
     quizChecked = false;
     hwRecognizing = false;
-    fb.hidden = true;
+    if (fb) fb.hidden = true;
     $("#quiz-after").hidden = true;
+    hideQuizPreview();
     $("#btn-quiz-check").disabled = false;
-    $("#btn-quiz-check").textContent = "核對手寫";
+    $("#btn-quiz-check").textContent = "辨識手寫";
+    $("#btn-quiz-check").hidden = false;
     resetHwPad();
   }
 
@@ -1269,6 +1335,7 @@
       on("#btn-quiz-replay", "click", replayQuizOnce);
       on("#btn-quiz-replay-bottom", "click", replayQuizOnce);
       on("#btn-quiz-check", "click", checkQuiz);
+      on("#btn-quiz-confirm", "click", confirmQuizGrade);
       on("#btn-quiz-skip", "click", skipQuiz);
       on("#btn-quiz-next", "click", nextQuiz);
       on("#btn-quiz-again", "click", function () {
@@ -1281,6 +1348,7 @@
         showView("view-home");
       });
       on("#btn-quiz-rewrite", "click", rewriteQuiz);
+      on("#btn-quiz-rewrite-after", "click", rewriteQuiz);
       on("#btn-hw-clear", "click", function () {
         if (hwPad) hwPad.clear();
         const st = $("#hw-status");

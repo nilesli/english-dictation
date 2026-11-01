@@ -3,7 +3,7 @@
  * Classic script (not type=module) so file:// / preview never blocks app boot.
  * Firebase ESM loaded lazily via dynamic import() from CDN.
  * Path: artifacts/english-dictation-default/public/data/english_dictation/sessions/entries/{id}
- * d7 · ?v=20261101d7
+ * d8 · ?v=20261101d8
  */
 (function (global) {
   "use strict";

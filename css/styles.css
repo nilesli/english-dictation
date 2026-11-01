@@ -1,4 +1,4 @@
-/* 英文默書温習 · iPad-first · d7 · ?v=20261101d7 */
+/* 英文默書温習 · iPad-first · d8 · ?v=20261101d8 */
 :root {
   --primary: #3B82F6;
   --primary-dark: #2563EB;
@@ -657,4 +657,27 @@ table.hist th {
 }
 .study-chunk-item:active {
   transform: scale(0.99);
+}
+
+
+/* ----- Quiz OCR preview before grade (d8) ----- */
+.quiz-preview {
+  margin-top: 0.85rem;
+  padding: 1rem 1.1rem;
+  background: #fff7ed;
+  border: 3px solid #fb923c;
+  border-radius: var(--radius);
+}
+.quiz-preview-text {
+  font-size: clamp(1.6rem, 5vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--text);
+  word-break: break-word;
+  padding: 0.75rem 0.25rem 0.9rem;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+#quiz-preview-method {
+  text-align: center;
 }
