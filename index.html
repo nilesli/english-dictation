@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>英文默書温習</title>
-  <link rel="stylesheet" href="css/styles.css?v=20261101d14" />
+  <link rel="stylesheet" href="css/styles.css?v=20261101d15" />
 </head>
 <body>
   <header class="app-header">
@@ -70,7 +70,7 @@
       <div id="teacher-body"><p class="empty-note">尚未載入。</p></div>
     </details>
 
-      <p class="footer-note">英文默書温習 · d14 · ?v=20261101d14 · 本機＋雲端成績</p>
+      <p class="footer-note">英文默書温習 · d15 · ?v=20261101d15 · 本機＋雲端成績</p>
     </section>
 
     <!-- MANAGE -->
@@ -104,7 +104,7 @@
 
       <div class="card">
         <h3 style="margin-top:0">相片 OCR</h3>
-        <p class="hint" style="color:var(--muted);margin-top:0">需要上網：Gemini 認字（Firebase）＋ Tesseract（CDN）。辨識後請檢查再儲存。</p>
+        <p class="hint" style="color:var(--muted);margin-top:0">需要上網：Tesseract（CDN）。辨識後請檢查再儲存。</p>
         <div class="field">
           <label for="ocr-file">上傳相片</label>
           <input type="file" id="ocr-file" accept="image/*" capture="environment" />
@@ -166,7 +166,7 @@
     <section class="view" id="view-quiz" aria-label="模擬默書">
       <div class="hero">
         <h2>模擬默書</h2>
-        <p>聽完先寫；听唔清可撳「再聽一次」。對話／背默段開題唔自動播音。</p>
+        <p>聽完用畫面鍵盤打字；听唔清可撳「再聽一次」。對話／背默段開題唔自動播音。</p>
       </div>
 
       <div class="card" id="quiz-setup">
@@ -227,46 +227,23 @@
         <p class="meta-line" id="quiz-meta">—</p>
         <div class="progress-bar" aria-hidden="true"><span id="quiz-progress"></span></div>
         <div class="quiz-listen-pane">
-        <div class="quiz-hidden" id="quiz-prompt">🔊 聽朗讀，然後用手寫</div>
+        <div class="quiz-hidden" id="quiz-prompt">🔊 聽朗讀，然後用畫面鍵盤打答案</div>
         <div class="btn-row replay-row">
           <button type="button" class="btn-replay" id="btn-quiz-replay" aria-label="再聽一次">🔊 再聽一次</button>
         </div>
         <p class="replay-hint" id="quiz-replay-hint">聽唔清就撳「再聽一次」（唔限次數）</p>
         </div>
-        <div class="hw-wrap">
-          <div class="hw-toolbar">
-            <span class="meta-line">用手寫（手指／觸控筆）· 唔使鍵盤</span>
-            <label class="hw-check"><input type="checkbox" id="hw-grid" checked /> 格線</label>
+        <div class="kb-wrap" id="kb-wrap">
+          <div class="kb-toolbar">
+            <span class="meta-line">用畫面鍵盤打答案（唔彈常用字／自動完成）</span>
           </div>
-          <div class="hw-canvas-box">
-            <canvas id="hw-canvas" width="640" height="240" aria-label="默書手寫畫板"></canvas>
-          </div>
-          <div class="btn-row hw-tool-toggle" role="group" aria-label="筆或擦膠">
-            <button type="button" class="btn-hw-tool active" id="btn-hw-pen" aria-pressed="true">✏️ 筆</button>
-            <button type="button" class="btn-hw-tool" id="btn-hw-eraser" aria-pressed="false">🧽 擦膠</button>
-          </div>
-          <div class="btn-row hw-tools">
-            <button type="button" class="btn-secondary" id="btn-hw-undo">↩ 撤銷</button>
-            <button type="button" class="btn-danger" id="btn-hw-clear">清除</button>
-            <label class="hw-pen-label" id="hw-size-label">筆粗／擦膠感應
-              <input type="range" id="hw-pen" min="3" max="16" step="1" value="5" />
-            </label>
-          </div>
-          <p class="ocr-status" id="hw-status" aria-live="polite"></p>
+          <div class="kb-answer kb-answer-empty" id="kb-answer" role="status" aria-live="polite" aria-label="已輸入答案">（尚未輸入）</div>
+          <div class="kb-board" id="kb-board" role="group" aria-label="字母鍵盤"></div>
+          <p class="ocr-status" id="kb-status" aria-live="polite"></p>
         </div>
-        <div class="btn-row">
-          <button type="button" class="btn-ok" id="btn-quiz-check">辨識手寫</button>
+        <div class="btn-row quiz-actions">
+          <button type="button" class="btn-ok" id="btn-quiz-check">核對</button>
           <button type="button" class="btn-secondary" id="btn-quiz-skip">跳過</button>
-        </div>
-
-        <div class="quiz-preview card-ish" id="quiz-preview" hidden>
-          <p class="meta-line">辨識結果（請睇清楚，確認先計分）</p>
-          <div class="quiz-preview-text" id="quiz-preview-text" aria-live="polite"></div>
-          <p class="meta-line" id="quiz-preview-method"></p>
-          <div class="btn-row">
-            <button type="button" class="btn-ok" id="btn-quiz-confirm">確認核對</button>
-            <button type="button" class="btn-secondary" id="btn-quiz-rewrite">再寫一次</button>
-          </div>
         </div>
 
         <div id="quiz-feedback" class="feedback" hidden></div>
@@ -281,7 +258,7 @@
         <div class="big" id="quiz-score">0/0</div>
         <p id="quiz-score-pct"></p>
         <p class="meta-line" id="quiz-rewrite-count" hidden></p>
-        <p class="meta-line" style="margin-top:0.75rem">錯字一覽（正確 vs 辨識／留空）</p>
+        <p class="meta-line" style="margin-top:0.75rem">錯字一覽（正確 vs 你打／留空）</p>
         <ul class="wrong-list" id="quiz-wrongs"></ul>
         <p class="ocr-status" id="quiz-upload-status" aria-live="polite" hidden></p>
         <div class="btn-row">
@@ -294,14 +271,13 @@
 
   <div class="toast" id="toast" hidden role="status"></div>
 
-  <script src="js/data-u4.js?v=20261101d14"></script>
-  <script src="js/storage.js?v=20261101d14"></script>
-  <script src="js/firebase-config.js?v=20261101d14"></script>
-  <script src="js/speech.js?v=20261101d14"></script>
-  <script src="js/ocr.js?v=20261101d14"></script>
-  <script src="js/gemini-ocr.js?v=20261101d14"></script>
-  <script src="js/handwriting.js?v=20261101d14"></script>
-  <script src="js/app.js?v=20261101d14"></script>
-  <script src="js/cloud.js?v=20261101d14"></script>
+  <script src="js/data-u4.js?v=20261101d15"></script>
+  <script src="js/storage.js?v=20261101d15"></script>
+  <script src="js/firebase-config.js?v=20261101d15"></script>
+  <script src="js/speech.js?v=20261101d15"></script>
+  <script src="js/ocr.js?v=20261101d15"></script>
+  <script src="js/keyboard.js?v=20261101d15"></script>
+  <script src="js/app.js?v=20261101d15"></script>
+  <script src="js/cloud.js?v=20261101d15"></script>
 </body>
 </html>
